@@ -1,16 +1,16 @@
-# Fondos de la pantalla grande
+# Full-screen display backgrounds
 
-Pon aquí tus **fotos de fondo** (`.jpg`, `.png`, `.webp`, `.gif`, `.avif`, `.svg`).
+Drop your **background photos** here (`.jpg`, `.png`, `.webp`, `.gif`, `.avif`, `.svg`).
 
-En el Control: **⚙️ → 🎨 Fondo personalizado → Buscar en /fondos**. Aparecerán como
-miniaturas: pulsa una para fijarla, o activa **Auto** para que vayan pasando solas.
-La pantalla grande las usa al abrirla con `display.html?bg=custom`.
+In the Control: **⚙️ → 🎨 Fondo personalizado → Buscar en /fondos**. They show up as
+thumbnails: click one to set it, or enable **Auto** to cycle through them automatically.
+The full-screen display uses them when opened with `display.html?bg=custom`.
 
-Detección automática: la app lee el listado de esta carpeta que sirve `python3 -m http.server`.
-Si usas otro servidor que no lista directorios, crea un `list.json` aquí con los nombres:
+Auto-detection: the app reads the listing of this folder served by `python3 -m http.server`.
+If you use another server that does not list directories, create a `list.json` here with the names:
 
 ```json
-["estadio.jpg", "patrocinador.png", "torneo.webp"]
+["stadium.jpg", "sponsor.png", "tournament.webp"]
 ```
 
-Las imágenes de ejemplo `bg1.svg`–`bg3.svg` puedes borrarlas.
+You can delete the sample images `bg1.svg`–`bg3.svg`.
