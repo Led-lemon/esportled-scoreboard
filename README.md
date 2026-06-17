@@ -1,6 +1,14 @@
-# Multi-Marcador · Broadcast
+# EsportLed Scoreboard
 
-Marcador profesional para **Fútbol ⚽ · Baloncesto 🏀 · Vóley 🏐 · Tenis 🎾 · Pádel 🏓**
+Marcador deportivo profesional para broadcast, parte del ecosistema de **EsportLed** — la
+solución de videomarcadores y pantallas LED para estadios, pabellones y eventos deportivos
+desarrollada por **LedLemon**.
+
+EsportLed fabrica e integra pantallas LED de gran formato; este software es el marcador en
+pantalla que las acompaña: una app web ligera (JavaScript + CSS, sin frameworks ni dependencias)
+con estética propia de la marca, lista para realización en directo.
+
+Soporta **Fútbol ⚽ · Baloncesto 🏀 · Vóley 🏐 · Tenis 🎾 · Pádel 🏓**
 con arquitectura de **control + salidas** (estilo realización TV):
 
 - **Control** (`index.html`) — consola del operador.
@@ -15,7 +23,7 @@ Todas se sincronizan en tiempo real con el Control (mismo navegador / pestañas)
 Sírvelo por `localhost` (necesario para módulos ES y MIDI):
 
 ```bash
-cd /Users/adfelipe/Documents/MARCADOR
+cd esportled-scoreboard
 python3 -m http.server 8080
 ```
 
@@ -30,7 +38,7 @@ python3 -m http.server 8080
   y **logo** personalizado (subes una imagen).
 - **Reloj** con periodos/cuartos y, en fútbol, **tiempo añadido** (+1', +2'…).
 - Controles de marcador grandes por deporte (goles, +1/+2/+3, faltas, tarjetas, saque, posesión…).
-- **EN AIRE / OCULTO**: muestra u oculta el gráfico en la salida con una animación.
+- **Mostrar / ocultar gráfico** en la salida con una animación (tecla `V` o control externo).
 - Deshacer, cambiar lados, guardar, reiniciar, historial.
 - Cada deporte recuerda su partido.
 
@@ -107,3 +115,7 @@ Queda asignado (Chrome/Edge).
 | `scoreboard.js` · `scoreboard.css` | Gráfico broadcast: barra + pantallas grandes (compartido) |
 | `engine.js` | Lógica de deportes, reloj y sincronización |
 | `bridge.js` | Puente WebSocket opcional para Stream Deck (Node) |
+
+---
+
+**EsportLed** · Videomarcadores y pantallas LED para deporte · un proyecto de **LedLemon**.
