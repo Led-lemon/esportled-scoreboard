@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0b" />
+  <title>Control · Multi-Marcador</title>
+  <link rel="stylesheet" href="scoreboard.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ===== Cabecera ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-logo" src="logos/esportled.png" alt="EsportLed" />
+      <span class="brand-sub">SCOREBOARD</span>
+    </div>
+    <nav class="sport-tabs" id="sportTabs"></nav>
+    <div class="topbar-actions">
+      <button class="btn" id="btnOpenOutput">🖥️ Abrir salida</button>
+      <button class="icon-btn" id="btnSettings" title="Reglas y control">⚙️</button>
+      <button class="icon-btn" id="btnHistory" title="Historial">🗂️</button>
+    </div>
+  </header>
+
+  <main class="console">
+    <!-- ===== Preview en vivo ===== -->
+    <section class="panel preview-panel">
+      <div class="panel-title">PREVIEW <span class="muted" id="previewState"></span></div>
+      <div class="preview-stage"><iframe id="preview" class="preview-frame" src="display.html?bg=custom" title="Preview de la salida"></iframe></div>
+    </section>
+
+    <!-- ===== Configuración de equipos ===== -->
+    <section class="teams-setup" id="teamsSetup"></section>
+
+    <!-- ===== Reloj ===== -->
+    <section class="panel clock-panel" id="clockPanel">
+      <div class="clock-left">
+        <div class="period-name" id="periodName">—</div>
+        <div class="big-clock" id="bigClock">00:00</div>
+        <div class="added-chip" id="addedChip"></div>
+      </div>
+      <div class="clock-buttons" id="clockButtons"></div>
+    </section>
+
+    <!-- ===== Controles de marcador ===== -->
+    <section class="score-controls">
+      <div class="ctrl-team" id="ctrlA"></div>
+      <div class="ctrl-center" id="ctrlCenter"></div>
+      <div class="ctrl-team" id="ctrlB"></div>
+    </section>
+
+    <!-- ===== Acciones de partido ===== -->
+    <footer class="matchbar">
+      <button class="btn" id="btnUndo">↶ Deshacer</button>
+      <button class="btn" id="btnSwap">⇄ Cambiar lados</button>
+      <button class="btn success" id="btnSave">💾 Guardar</button>
+      <button class="btn danger" id="btnReset">Reiniciar partido</button>
+    </footer>
+  </main>
+
+  <!-- ===== Modales ===== -->
+  <div class="modal-overlay" id="settingsModal" hidden>
+    <div class="modal">
+      <header class="modal-head"><h2>Reglas y control externo</h2><button class="icon-btn" data-close>✕</button></header>
+      <div class="modal-body" id="settingsBody"></div>
+      <footer class="modal-foot"><button class="btn" data-close>Cerrar</button></footer>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="historyModal" hidden>
+    <div class="modal">
+      <header class="modal-head"><h2>Historial</h2><button class="icon-btn" data-close>✕</button></header>
+      <div class="modal-body" id="historyBody"></div>
+      <footer class="modal-foot">
+        <button class="btn danger" id="btnClearHistory">Borrar todo</button>
+        <button class="btn" data-close>Cerrar</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+  <script type="module" src="control.js"></script>
+</body>
+</html>

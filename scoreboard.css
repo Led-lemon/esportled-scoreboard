@@ -1,0 +1,279 @@
+/* ============================================================
+   SCOREBOARD · estilos del gráfico broadcast
+   Estética: NEOBRUTALISMO (EsportLed)
+   ============================================================ */
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;700&display=swap");
+
+* { box-sizing: border-box; }
+
+:root {
+  --nb-red: #f94e41;
+  --nb-red-dark: #e2162a;
+  --nb-dark: #161616;
+  --nb-black: #000;
+}
+
+body.output {
+  margin: 0;
+  min-height: 100vh;
+  background: transparent;          /* OBS: capturar con fondo transparente */
+  font-family: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  overflow: hidden;
+}
+body.output.solid {
+  background:
+    repeating-linear-gradient(45deg, transparent, transparent 12px, rgba(249,78,65,.05) 12px, rgba(249,78,65,.05) 24px),
+    linear-gradient(135deg, #000 0%, var(--nb-dark) 100%);
+}
+.waiting {
+  position: fixed; inset: 0; display: none;
+  align-items: center; justify-content: center;
+  color: var(--nb-red); font-size: 20px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 3px;
+  display: flex;
+}
+body.output.solid .waiting { display: flex; }
+
+/* ---------- Contenedor ---------- */
+.sb-wrap {
+  display: flex; align-items: flex-end; justify-content: center;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+/* La salida a pantalla completa ocupa todo y baja el gráfico */
+body.output #stage { position: fixed; inset: 0; padding-bottom: 6vh; }
+
+/* ---------- Barra principal ---------- */
+.sb {
+  --h: clamp(54px, 7.2vh, 96px);
+  display: flex; align-items: stretch;
+  font-size: clamp(15px, 1.5vw, 26px);
+  height: var(--h);
+  border-radius: 0;
+  border: 4px solid var(--nb-black);
+  overflow: hidden;
+  box-shadow: 9px 9px 0 rgba(0,0,0,.55);
+  transform-origin: bottom center;
+  transition: opacity .4s ease, transform .4s ease;
+}
+.sb.sb-hidden { opacity: 0; transform: translateY(120%); }
+
+/* ---------- Lado de equipo ---------- */
+.sb-side {
+  display: flex; align-items: center; gap: .55em;
+  padding: 0 .5em 0 .7em;
+  background: var(--nb-dark);
+  min-width: 8em;
+  position: relative;
+}
+.sb-side::before {
+  content: ""; position: absolute; top: 0; bottom: 0; width: .55em; background: var(--tc);
+}
+.sb-a { border-right: 4px solid var(--nb-black); }
+.sb-a::before { left: 0; }
+.sb-b { flex-direction: row-reverse; border-left: 4px solid var(--nb-black); padding: 0 .7em 0 .5em; }
+.sb-b::before { right: 0; }
+.sb-b .sb-id { text-align: right; }
+
+.sb-logo {
+  width: calc(var(--h) * .62); height: calc(var(--h) * .62);
+  border-radius: 0; overflow: hidden; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff2; border: 2px solid var(--nb-black);
+}
+.sb-logo img { width: 100%; height: 100%; object-fit: contain; }
+.sb-initials {
+  background: var(--tc); color: #fff;
+  font-family: "Bebas Neue", sans-serif; font-weight: 400;
+  font-size: 1.3em; letter-spacing: 1px;
+}
+
+.sb-id { display: flex; flex-direction: column; justify-content: center; gap: .12em; min-width: 0; }
+.sb-name {
+  color: #fff; font-family: "Bebas Neue", sans-serif; font-weight: 400; font-size: 1.35em;
+  letter-spacing: 1px; white-space: nowrap; text-transform: uppercase;
+  text-shadow: 2px 2px 0 rgba(0,0,0,.6);
+}
+.sb-serve { color: var(--nb-red); font-size: .7em; vertical-align: middle; }
+.sb-poss { color: var(--nb-red); font-size: .8em; }
+.sb-tags { display: flex; gap: .25em; }
+.sb-b .sb-tags { justify-content: flex-end; }
+.sb-tag {
+  font-size: .62em; font-weight: 800; color: #000;
+  border-radius: 0; padding: .1em .35em; line-height: 1.2; border: 1px solid #000;
+}
+.sb-tag.yel { background: #facc15; }
+.sb-tag.red { background: var(--nb-red); color: #fff; }
+.sb-tag.foul { background: #cbd5e1; }
+
+/* ---------- Cluster de puntuación ---------- */
+.sb-cluster { display: flex; align-items: center; gap: 0; height: 100%; }
+.sb-b .sb-cluster { flex-direction: row-reverse; }
+.sb-main {
+  font-family: "Bebas Neue", sans-serif; font-weight: 400;
+  font-size: 2.3em; color: #fff;
+  min-width: 1.6em; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--tc);
+  padding: 0 .15em;
+  border-left: 4px solid var(--nb-black); border-right: 4px solid var(--nb-black);
+  text-shadow: 2px 2px 0 rgba(0,0,0,.4);
+}
+.sb-sets {
+  font-family: "Bebas Neue", sans-serif; font-weight: 400; font-size: 1.8em;
+  color: var(--nb-red); min-width: 1.1em; text-align: center; padding: 0 .2em;
+}
+.sb-setrow { display: flex; gap: 0; }
+.sb-b .sb-setrow { flex-direction: row-reverse; }
+.sb-setbox {
+  font-family: "Bebas Neue", sans-serif; font-weight: 400; font-size: 1.2em;
+  color: #cbd5e1; background: #000; border-radius: 0; border: 2px solid var(--nb-black);
+  min-width: 1.3em; padding: .1em .25em; text-align: center;
+}
+.sb-setbox.cur { color: #fff; background: var(--nb-red); }
+
+/* ---------- Centro: reloj / periodo ---------- */
+.sb-mid {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--nb-black); color: #fff; padding: 0 1em; min-width: 5.5em; gap: 0;
+  overflow: hidden;
+}
+.sb-period {
+  font-family: "Bebas Neue", sans-serif; font-size: .64em; font-weight: 400; letter-spacing: 2px;
+  color: var(--nb-red); text-transform: uppercase; white-space: nowrap; line-height: 1;
+}
+.sb-clock {
+  font-family: "Bebas Neue", sans-serif; font-weight: 400;
+  font-size: 1.5em; font-variant-numeric: tabular-nums; letter-spacing: 1px;
+  line-height: .9;
+}
+.sb-clock.run { color: var(--nb-red); }
+.sb-clock.over { color: var(--nb-red-dark); }
+.sb-added {
+  font-family: "Bebas Neue", sans-serif; font-weight: 400; font-size: .8em;
+  color: var(--nb-red); line-height: 1;
+}
+
+/* ---------- Final ---------- */
+.sb-final .sb-mid { background: var(--nb-red); color: #000; }
+.sb-final .sb-period { color: #000; }
+.sb-final .sb-clock { color: #000; }
+
+/* Reduce el ancho del nombre si hace falta */
+@media (max-width: 760px) { .sb-name { font-size: 1.15em; } }
+
+/* ============================================================
+   PANTALLA GRANDE · marcador estilo estadio (Resolume / monitor)
+   Fondo transparente por defecto (Resolume compone el vídeo en
+   una capa inferior). ?bg=solid añade fondo.
+   ============================================================ */
+.big-wrap {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+body.output #stage.big-wrap { padding-bottom: 0; }
+.bb-board {
+  width: min(96vw, 1800px);
+  display: flex; flex-direction: column; gap: clamp(10px, 2.5vh, 32px);
+  transition: opacity .4s ease, transform .4s ease;
+}
+.bb-wrap.big-hidden .bb-board { opacity: 0; transform: translateY(40px) scale(.98); }
+
+/* ---- Nombres arriba, cada uno sobre su mitad ---- */
+.bb-names { display: flex; }
+.bb-name {
+  flex: 1 1 0; text-align: center; color: #fff;
+  font-family: "Bebas Neue", sans-serif; font-weight: 400; text-transform: uppercase;
+  letter-spacing: clamp(1px, .4vw, 6px); font-size: clamp(24px, 4.8vw, 96px); line-height: 1.05;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-shadow: 5px 5px 0 rgba(0,0,0,.7);
+}
+
+/* ---- Fila central: logo | paneles de color | logo ---- */
+.bb-main { display: flex; align-items: center; justify-content: space-between; gap: clamp(12px, 2.4vw, 48px); }
+.bb-logo {
+  flex: 0 0 auto; width: clamp(150px, 22vw, 460px); height: clamp(150px, 22vw, 460px);
+  display: flex; align-items: center; justify-content: center;
+}
+.bb-logo img {
+  width: 100%; height: 100%; object-fit: contain;
+  filter: drop-shadow(10px 10px 0 rgba(0,0,0,.5));
+}
+.bb-initials {
+  border-radius: 0; background: var(--tc); color: #fff;
+  font-family: "Bebas Neue", sans-serif; font-weight: 400; font-size: clamp(72px, 12vw, 240px);
+  border: 6px solid var(--nb-black); box-shadow: 14px 14px 0 rgba(0,0,0,.5);
+}
+.bb-panels { display: flex; gap: clamp(10px, 1.6vw, 28px); flex: 0 1 auto; }
+.bb-panel {
+  position: relative;
+  width: clamp(150px, 19vw, 420px); height: clamp(210px, 46vh, 620px);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 0;                 /* ángulos rectos */
+  background: var(--tc);            /* fondo sólido del color del equipo */
+  border: 6px solid var(--nb-black);
+  box-shadow: 14px 14px 0 rgba(0,0,0,.5);
+}
+.bb-num {
+  font-family: "Bebas Neue", sans-serif; font-weight: 400; color: #fff; line-height: .8;
+  font-size: clamp(120px, 30vh, 440px); font-variant-numeric: tabular-nums;
+  text-shadow: 6px 6px 0 rgba(0,0,0,.5);
+}
+/* Color transparente: sin caja ni sombra, 100% transparente (deja ver el fondo). */
+.bb-transp { box-shadow: none !important; background: transparent !important; border-color: transparent !important; }
+.bb-sets {
+  position: absolute; top: .35em; left: 0; right: 0; text-align: center;
+  font-family: "Bebas Neue", sans-serif; font-weight: 400; color: #fff; font-size: clamp(20px, 2.4vw, 42px);
+}
+.bb-mark { position: absolute; top: .4em; right: .5em; font-size: clamp(16px, 2vw, 34px); }
+.bb-serve { color: #fff; }
+.bb-poss { color: #fff; }
+
+/* ---- Fila inferior: barras de tarjetas + reloj central ---- */
+.bb-bottom { display: flex; align-items: center; gap: clamp(8px, 1.4vw, 24px); }
+.bb-bar {
+  flex: 1 1 0; height: clamp(34px, 4.2vh, 60px);
+  display: flex; align-items: center; gap: .5em; padding: 0 clamp(8px, 1vw, 18px);
+  border-radius: 0;
+  background: var(--nb-dark);
+  border: 4px solid var(--nb-black);
+}
+.bb-bar-a { justify-content: flex-start; }
+.bb-bar-b { justify-content: flex-end; }
+.bb-card {
+  width: clamp(18px, 1.5vw, 28px); height: clamp(26px, 2.2vw, 40px);
+  border-radius: 0; border: 2px solid #000;
+}
+.bb-card.yel { background: #facc15; }
+.bb-card.red { background: var(--nb-red); }
+.bb-foul {
+  font-family: "Bebas Neue", sans-serif; font-weight: 400; color: #cbd5e1;
+  letter-spacing: 1px; font-size: clamp(16px, 1.8vw, 28px);
+}
+.bb-clockbox {
+  flex: 0 0 auto; min-width: clamp(180px, 22vw, 460px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: clamp(6px, 1vh, 14px) clamp(16px, 2vw, 40px);
+  border-radius: 0;
+  background: var(--nb-black);
+  border: 4px solid var(--nb-black);
+  box-shadow: 8px 8px 0 rgba(0,0,0,.5);
+}
+.bb-period {
+  font-family: "Bebas Neue", sans-serif; font-weight: 400; letter-spacing: 3px;
+  color: var(--nb-red); text-transform: uppercase; font-size: clamp(14px, 1.7vw, 30px);
+}
+.bb-clock {
+  font-family: "Bebas Neue", sans-serif; font-weight: 400; color: #fff; line-height: 1;
+  font-variant-numeric: tabular-nums; letter-spacing: 2px; font-size: clamp(38px, 6.5vw, 120px);
+}
+.bb-clock.run { color: var(--nb-red); }
+.bb-clock.over { color: var(--nb-red-dark); }
+.bb-added {
+  font-family: "Bebas Neue", sans-serif; font-weight: 400; color: var(--nb-red); font-size: clamp(16px, 2vw, 32px);
+}
+.bb-wrap.big-final .bb-num { color: #fff; }
+.bb-wrap.big-final .bb-clockbox { background: var(--nb-red); border-color: var(--nb-red); }
+.bb-wrap.big-final .bb-clock,
+.bb-wrap.big-final .bb-period { color: #000; }
