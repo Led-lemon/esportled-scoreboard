@@ -38,6 +38,10 @@ const COMMANDS = {
   b1: () => match.sport === "basquet" && apply((m) => E.addCount(m, "B", 1)),
   b2: () => match.sport === "basquet" && apply((m) => E.addCount(m, "B", 2)),
   b3: () => match.sport === "basquet" && apply((m) => E.addCount(m, "B", 3)),
+  a_conv: () => match.sport === "rugby" && apply((m) => E.addCount(m, "A", 2)), // transformación
+  b_conv: () => match.sport === "rugby" && apply((m) => E.addCount(m, "B", 2)),
+  a_pen: () => match.sport === "rugby" && apply((m) => E.addCount(m, "A", 3)),  // penal / drop
+  b_pen: () => match.sport === "rugby" && apply((m) => E.addCount(m, "B", 3)),
   a_foul: () => c().feat.fouls && apply((m) => E.addStat(m, "A", "fouls", 1)),
   b_foul: () => c().feat.fouls && apply((m) => E.addStat(m, "B", "fouls", 1)),
   a_yellow: () => c().feat.cards && apply((m) => E.addStat(m, "A", "yellow", 1)),
@@ -60,7 +64,7 @@ const COMMANDS = {
 };
 function smartMinus(who) {
   const cf = c();
-  if (cf.scoring === "count" || cf.scoring === "basket") apply((m) => E.addCount(m, who, -1));
+  if (cf.scoring === "count" || cf.scoring === "basket" || cf.scoring === "rugby") apply((m) => E.addCount(m, who, -1));
   else if (cf.scoring === "set") apply((m) => E.volleyPoint(m, who, -1));
   else undo();
 }
@@ -71,6 +75,8 @@ const COMMAND_LIST = [
   ["b_plus", "Visitante: + punto", "P"], ["b_minus", "Visitante: − punto", "L"],
   ["a1", "Local +1 (básquet)", "1"], ["a2", "Local +2", "2"], ["a3", "Local +3", "3"],
   ["b1", "Visitante +1", "8"], ["b2", "Visitante +2", "9"], ["b3", "Visitante +3", "0"],
+  ["a_conv", "Local +2 (rugby transf.)", "F"], ["a_pen", "Local +3 (rugby penal/drop)", "D"],
+  ["b_conv", "Visitante +2 (rugby)", "J"], ["b_pen", "Visitante +3 (rugby)", "K"],
   ["a_foul", "Local: falta", "W"], ["b_foul", "Visitante: falta", "O"],
   ["a_yellow", "Local 🟨", "E"], ["a_red", "Local 🟥", "R"],
   ["b_yellow", "Visitante 🟨", "I"], ["b_red", "Visitante 🟥", "U"],
@@ -151,6 +157,31 @@ function connectWs(url) {
 }
 function disconnectWs() { if (ws) { try { ws.close(); } catch {} ws = null; } }
 
+/* ---------- Sync hacia la app NDI (relay WS local, opcional) ----------
+   Empuja el estado completo a la app Electron→NDI si está abierta (otro
+   navegador, no comparte localStorage). Silencioso: si el relay no existe,
+   reintenta sin molestar. No afecta al uso normal si nunca se abre la app. */
+let ndiWs = null, ndiTimer = null;
+function ndiSend(payload) { try { if (ndiWs && ndiWs.readyState === 1) ndiWs.send(JSON.stringify(payload)); } catch {} }
+function connectNdi() {
+  try {
+    ndiWs = new WebSocket("ws://127.0.0.1:9011");
+    ndiWs.onopen = () => {
+      E.setRemoteSync(ndiSend);
+      // snapshot inicial: la salida NDI toma el estado actual al conectar
+      ndiSend({ type: "state", data: match });
+      ndiSend({ type: "bg", data: E.loadBg() || {} });
+      ndiSend({ type: "sponsors", data: E.loadSponsors() || {} });
+    };
+    ndiWs.onclose = () => { ndiWs = null; E.setRemoteSync(null); };
+    ndiWs.onerror = () => { try { ndiWs.close(); } catch {} };
+  } catch {}
+}
+function startNdiSync() {
+  connectNdi();
+  if (!ndiTimer) ndiTimer = setInterval(() => { if (!ndiWs) connectNdi(); }, 8000);
+}
+
 /* ============================================================
    ACCIONES
    ============================================================ */
@@ -170,17 +201,48 @@ function resetMatch() {
   ["name", "short", "color", "logo"].forEach((k) => { match.A[k] = keep.A[k]; match.B[k] = keep.B[k]; });
   undoStack = []; sync(); toast("Partido reiniciado");
 }
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch { return []; }
+}
+// Escribe la lista de partidos guardados. Como cada uno lleva el partido COMPLETO
+// (con logos en dataURL, que pesan), si se supera el cupo de localStorage se
+// descartan los más antiguos (al final) hasta que quepa. Devuelve lo realmente
+// guardado, para avisar si se recortó.
+function saveHistory(hist) {
+  let list = hist.slice(0, 50);
+  while (list.length) {
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); return list; }
+    catch { list = list.slice(0, list.length - 1); }
+  }
+  try { localStorage.setItem(HISTORY_KEY, "[]"); } catch {}
+  return [];
+}
 function saveMatch() {
   const cf = c();
   const entry = {
+    id: "m" + Date.now() + "_" + Math.floor(Math.random() * 1e4),
     sport: cf.name, icon: cf.icon, date: Date.now(),
     a: match.A.name, b: match.B.name,
     scoreA: summary("A"), scoreB: summary("B"), winner: match.finished,
+    match: E.cloneMatch(match), // partido completo: equipos, colores, logos, marcador, reloj, sets…
   };
-  let hist = []; try { hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch {}
+  const hist = loadHistory();
   hist.unshift(entry);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(hist.slice(0, 100)));
-  toast("💾 Guardado");
+  const saved = saveHistory(hist);
+  toast(saved.length < hist.length ? "💾 Guardado (espacio justo: borrados los más antiguos)" : "💾 Guardado");
+}
+function loadSavedMatch(id) {
+  const entry = loadHistory().find((h) => h.id === id);
+  if (!entry || !entry.match || !E.SPORTS[entry.match.sport]) { toast("No se puede recargar este partido"); return; }
+  match = E.cloneMatch(entry.match);
+  undoStack = [];
+  sync();
+  $("historyModal").hidden = true;
+  toast("↩️ Partido recargado");
+}
+function deleteSavedMatch(id) {
+  saveHistory(loadHistory().filter((h) => h.id !== id));
+  openHistory();
 }
 function summary(who) {
   const cf = c();
@@ -224,11 +286,46 @@ function handleBgImage(file) {
       ctx.drawImage(img, 0, 0, cv.width, cv.height);
       const b = E.loadBg() || {};
       b.image = cv.toDataURL("image/jpeg", 0.82);
+      b.mode = "image";
       E.saveBg(b); toast("🎨 Fondo cargado"); openSettings();
     };
     img.src = reader.result;
   };
   reader.readAsDataURL(file);
+}
+
+/* ---------- Sponsors (carrusel publicitario) ---------- */
+function sponsorsState() {
+  const s = Object.assign({ enabled: true, speed: 120, logos: [] }, E.loadSponsors() || {});
+  // Migración: valores antiguos eran "segundos por vuelta" (4–180); ahora es px/s.
+  if (!s.speed || s.speed < 20) s.speed = 120;
+  return s;
+}
+function handleSponsorLogos(files) {
+  const list = [...(files || [])].filter((f) => f && f.type.startsWith("image/"));
+  if (!list.length) return;
+  let pending = list.length;
+  const s = sponsorsState();
+  list.forEach((file) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        // PNG para conservar transparencia; máx 360px de alto basta para la banda.
+        const max = 360, scale = Math.min(1, max / Math.max(img.width, img.height));
+        const cv = document.createElement("canvas");
+        cv.width = Math.round(img.width * scale); cv.height = Math.round(img.height * scale);
+        const ctx = cv.getContext("2d");
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, cv.width, cv.height);
+        s.logos.push(cv.toDataURL("image/png"));
+        if (--pending === 0) { E.saveSponsors(s); toast(`📢 ${s.logos.length} sponsor(s)`); openSettings(); }
+      };
+      img.onerror = () => { if (--pending === 0) { E.saveSponsors(s); openSettings(); } };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 /* Descubre las fotos de la carpeta fondos/. Solo guarda los NOMBRES en mm_bg;
@@ -253,8 +350,16 @@ async function scanBgFolder() {
   }
   if (!files.length) { toast("Sin fotos en /fondos"); return; }
   const b = E.loadBg() || {};
-  b.gallery = Object.assign({ enabled: false, auto: false, intervalSec: 8, index: 0 }, b.gallery, { dir: BG_DIR, files });
+  b.gallery = Object.assign({ enabled: true, auto: false, intervalSec: 8, index: 0 }, b.gallery, { dir: BG_DIR, files });
+  b.gallery.enabled = true; b.mode = "gallery";
   E.saveBg(b); toast(`📁 ${files.length} foto(s)`); openSettings();
+}
+// Elige la fuente de fondo activa (color / imagen / galería). El display respeta bg.mode.
+function setBgMode(mode) {
+  const b = E.loadBg() || {};
+  b.mode = mode;
+  if (b.gallery) b.gallery.enabled = (mode === "gallery");
+  E.saveBg(b); openSettings();
 }
 
 /* ============================================================
@@ -372,6 +477,12 @@ function renderScoreControls() {
       btns += pb(lw + "_minus", "−", "minus");
       if (cf.feat.fouls) btns += pb(lw + "_foul", "Falta");
       btns += `<button class="cbtn" data-poss="${w}">⟵ Posesión</button>`;
+    } else if (cf.scoring === "rugby") {
+      btns += pb(lw + "_plus", "+5 ENSAYO", "primary");
+      btns += pb(lw + "_conv", "+2 Transf.");
+      btns += pb(lw + "_pen", "+3 Penal/Drop");
+      btns += pb(lw + "_minus", "−", "minus");
+      if (cf.feat.cards) { btns += pb(lw + "_yellow", "🟨"); btns += pb(lw + "_red", "🟥"); }
     } else if (cf.scoring === "set") {
       btns += pb(lw + "_plus", "+ PUNTO", "primary");
       btns += pb(lw + "_minus", "−", "minus");
@@ -410,6 +521,7 @@ function openSettings() {
   const cf = c(), body = $("settingsBody");
   let html = `<h3 class="sec-title">📋 Reglas · ${cf.name}</h3>`;
   if (match.sport === "futbol") html += numRow("defMin", "Minutos por tiempo", cf.defMin, 1, 60);
+  if (match.sport === "rugby") html += numRow("defMin", "Minutos por tiempo", cf.defMin, 1, 60);
   if (match.sport === "basquet") html += numRow("defMin", "Minutos por cuarto", cf.defMin, 1, 20);
   if (match.sport === "voley") {
     html += numRow("setPoints", "Puntos por set", cf.setPoints, 5, 50);
@@ -424,38 +536,64 @@ function openSettings() {
 
   // Salidas (inputs para Resolume / OBS)
   html += `<h3 class="sec-title">🖥️ Salidas (Resolume / OBS)</h3>
-    <p class="hint" style="margin:2px 0 10px">Fondo transparente — añade cada URL como "Web" source en Resolume (u "Origen de navegador" en OBS). <b>+ fondo</b> abre con el fondo personalizado de abajo (en la barra, fondo sólido).</p>
+    <p class="hint" style="margin:2px 0 10px">Fondo transparente — añade cada salida en Resolume/OBS. El fondo de la pantalla grande se enciende/apaga abajo.</p>
     <div class="setting-row"><label>Barra inferior<span class="hint">Lower-third sobre el vídeo · output.html</span></label>
-      <span class="switch"><button class="btn small" data-out="output.html">Abrir</button>
-      <button class="btn small ghost" data-out="output.html?bg=solid">+ fondo</button></span></div>
+      <span class="switch"><button class="btn small" data-out="output.html">Abrir</button></span></div>
     <div class="setting-row"><label>Pantalla grande<span class="hint">Marcador estilo estadio · display.html</span></label>
-      <span class="switch"><button class="btn small" data-out="display.html">Abrir</button>
-      <button class="btn small ghost" data-out="display.html?bg=custom">+ fondo</button></span></div>`;
+      <span class="switch"><button class="btn small" data-out="display.html">Abrir</button></span></div>`;
 
-  // Fondo personalizado de la pantalla grande
+  // Fondo de la pantalla grande — UNA sola fuente, elegida por modo.
   const bg = E.loadBg() || {};
-  html += `<h3 class="sec-title">🎨 Fondo personalizado (pantalla grande)</h3>
-    <p class="hint" style="margin:2px 0 10px">Se aplica al abrir la pantalla grande con <b>+ pers.</b> (display.html?bg=custom). Si subes imagen, manda sobre el color. La barra y el modo transparente no cambian.</p>
-    <div class="setting-row"><label>Color de fondo</label>
-      <input type="color" id="bgColor" value="${E.esc(bg.color || "#0a0f1c")}"></div>
-    <div class="setting-row"><label>Imagen de fondo<span class="hint">${bg.image ? "Imagen cargada · manda sobre el color" : "Sin imagen — se usa el color"}</span></label>
-      <span class="switch"><label class="btn small file-btn">Subir imagen<input type="file" accept="image/*" id="bgImage" hidden></label>
-      ${bg.image ? `<button class="btn small ghost" id="bgImageClear">Quitar imagen</button>` : ""}</span></div>`;
-
-  // Galería de carpeta (fondos/) con cambio automático
   const gal = bg.gallery || {}, gfiles = gal.files || [];
-  html += `<div class="setting-row"><label>Galería de carpeta<span class="hint">Pon tus fotos en <code>fondos/</code> y púlsalo. La galería manda sobre imagen/color.</span></label>
+  const bgMode = bg.mode || (gal.enabled && gfiles.length ? "gallery" : bg.image ? "image" : "color");
+  const bgOn = !!bg.enabled;
+  const seg = (m, label) => `<button class="seg-btn${bgMode === m ? " active" : ""}" data-bgmode="${m}">${label}</button>`;
+  html += `<h3 class="sec-title">🎨 Fondo · pantalla grande</h3>
+    <p class="hint" style="margin:2px 0 10px">Enciende el fondo para que la pantalla grande (display.html) deje de ser transparente. Para Resolume normalmente lo dejas apagado.</p>
+    <div class="setting-row"><label>Mostrar fondo<span class="hint">${bgOn ? "Encendido — se ve el fondo elegido" : "Apagado — pantalla transparente"}</span></label>
+      <button class="btn small ${bgOn ? "success" : ""}" id="bgEnabled">${bgOn ? "● Activo" : "Desactivado"}</button></div>
+    <div class="seg">${seg("color", "🎨 Color")}${seg("image", "🖼️ Imagen")}${seg("gallery", "🗂️ Galería")}</div>`;
+
+  if (bgMode === "color") {
+    html += `<div class="setting-row"><label>Color de fondo</label>
+      <input type="color" id="bgColor" value="${E.esc(bg.color || "#0a0f1c")}"></div>`;
+  } else if (bgMode === "image") {
+    html += `<div class="setting-row"><label>Imagen de fondo<span class="hint">${bg.image ? "Imagen cargada" : "Sube una imagen (se ajusta a pantalla)"}</span></label>
+      <span class="switch"><label class="btn small file-btn">${bg.image ? "Cambiar" : "Subir imagen"}<input type="file" accept="image/*" id="bgImage" hidden></label>
+      ${bg.image ? `<button class="btn small ghost" id="bgImageClear">Quitar</button>` : ""}</span></div>`;
+    if (bg.image) html += `<div class="bg-gallery"><div class="bg-thumb sel" style="background-image:url('${bg.image}')"></div></div>`;
+  } else {
+    html += `<div class="setting-row"><label>Galería de carpeta<span class="hint">Pon tus fotos en <code>fondos/</code> y púlsalo</span></label>
       <button class="btn small" id="bgScan">Buscar en /fondos</button></div>`;
-  if (gfiles.length) {
-    const autoOn = gal.enabled && gal.auto;
-    html += `<div class="setting-row"><label>Cambio automático<span class="hint">Pasa las fotos solo, en bucle</span></label>
+    if (gfiles.length) {
+      html += `<div class="setting-row"><label>Cambio automático<span class="hint">Pasa las fotos solas, en bucle</span></label>
         <span class="switch"><input type="number" id="galSec" value="${gal.intervalSec || 8}" min="2" max="600" style="width:60px"> s
-        <button class="btn small ${autoOn ? "success" : ""}" id="galAuto">${autoOn ? "● Auto ON" : "Activar auto"}</button></span></div>`;
-    html += `<div class="bg-gallery">` + gfiles.map((f, i) => {
-      const sel = gal.enabled && !gal.auto && gal.index === i ? " sel" : "";
-      return `<button class="bg-thumb${sel}" data-galpick="${i}" title="${E.esc(f)}" style="background-image:url('${E.esc(gal.dir || "fondos/")}${E.esc(f)}')"></button>`;
-    }).join("") + `</div>`;
-    if (gal.enabled) html += `<div class="setting-row"><label>Galería activa</label><button class="btn small ghost" id="galOff">Desactivar galería</button></div>`;
+        <button class="btn small ${gal.auto ? "success" : ""}" id="galAuto">${gal.auto ? "● Auto ON" : "Activar auto"}</button></span></div>
+        <p class="hint" style="margin:2px 0 8px">${gal.auto ? "Pasando solas." : "Toca una foto para fijarla."}</p>`;
+      html += `<div class="bg-gallery">` + gfiles.map((f, i) => {
+        const sel = !gal.auto && gal.index === i ? " sel" : "";
+        return `<button class="bg-thumb${sel}" data-galpick="${i}" title="${E.esc(f)}" style="background-image:url('${E.esc(gal.dir || "fondos/")}${E.esc(f)}')"></button>`;
+      }).join("") + `</div>`;
+    } else {
+      html += `<p class="hint">Aún no hay fotos. Copia imágenes en la carpeta <code>fondos/</code> y pulsa "Buscar en /fondos".</p>`;
+    }
+  }
+
+  // Sponsors / publicidad (carrusel de la barra inferior)
+  const sp = sponsorsState();
+  html += `<h3 class="sec-title">📢 Sponsors · banner publicitario</h3>
+    <p class="hint" style="margin:2px 0 10px">Banda inferior en <b>output.html</b> con los logos desplazándose en bucle (carrusel). Independiente del marcador: sigue aunque ocultes el gráfico.</p>
+    <div class="setting-row"><label>Mostrar carrusel<span class="hint">${sp.logos.length ? sp.logos.length + " logo(s) cargado(s)" : "Sube logos abajo"}</span></label>
+      <button class="btn small ${sp.enabled ? "success" : ""}" id="spToggle">${sp.enabled ? "● Activo" : "Desactivado"}</button></div>
+    <div class="setting-row"><label>Velocidad<span class="hint">Píxeles por segundo · constante (más = más rápido). Típico 80–200</span></label>
+      <span class="switch"><input type="number" id="spSpeed" value="${sp.speed}" min="20" max="600" step="10" style="width:64px"> px/s</span></div>
+    <div class="setting-row"><label>Añadir logos<span class="hint">Puedes seleccionar varios a la vez · PNG con transparencia recomendado</span></label>
+      <span class="switch"><label class="btn small file-btn">Subir logos<input type="file" accept="image/*" id="spFiles" multiple hidden></label>
+      ${sp.logos.length ? `<button class="btn small ghost" id="spClear">Quitar todos</button>` : ""}</span></div>`;
+  if (sp.logos.length) {
+    html += `<div class="bg-gallery">` + sp.logos.map((src, i) =>
+      `<button class="bg-thumb sp-thumb" data-spdel="${i}" title="Quitar este logo" style="background-image:url('${src}')"><span class="sp-del">✕</span></button>`
+    ).join("") + `</div>`;
   }
 
   // Control externo
@@ -488,30 +626,46 @@ function openSettings() {
   body.querySelectorAll("[data-out]").forEach((b) => {
     b.onclick = () => window.open(b.dataset.out, "mm_" + b.dataset.out.replace(/\W+/g, "_"));
   });
-  body.querySelector("#bgColor").oninput = (e) => {
-    const b = E.loadBg() || {}; b.color = e.target.value; E.saveBg(b);
-  };
-  body.querySelector("#bgImage").onchange = (e) => handleBgImage(e.target.files[0]);
+  const bgEnabled = body.querySelector("#bgEnabled");
+  if (bgEnabled) bgEnabled.onclick = () => { const b = E.loadBg() || {}; b.enabled = !b.enabled; E.saveBg(b); openSettings(); };
+  body.querySelectorAll("[data-bgmode]").forEach((b) => (b.onclick = () => setBgMode(b.dataset.bgmode)));
+  const bgColor = body.querySelector("#bgColor");
+  if (bgColor) bgColor.oninput = (e) => { const b = E.loadBg() || {}; b.color = e.target.value; b.mode = "color"; E.saveBg(b); };
+  const bgImage = body.querySelector("#bgImage");
+  if (bgImage) bgImage.onchange = (e) => handleBgImage(e.target.files[0]);
   const bgClear = body.querySelector("#bgImageClear");
   if (bgClear) bgClear.onclick = () => { const b = E.loadBg() || {}; b.image = ""; E.saveBg(b); openSettings(); };
-  body.querySelector("#bgScan").onclick = scanBgFolder;
+  const bgScan = body.querySelector("#bgScan");
+  if (bgScan) bgScan.onclick = scanBgFolder;
   const galAuto = body.querySelector("#galAuto");
   if (galAuto) galAuto.onclick = () => {
     const b = E.loadBg() || {}; b.gallery = b.gallery || {};
     const sec = Number(body.querySelector("#galSec").value) || 8;
     b.gallery.intervalSec = Math.min(600, Math.max(2, sec));
-    b.gallery.enabled = true; b.gallery.auto = true;
+    b.gallery.enabled = true; b.gallery.auto = !b.gallery.auto; b.mode = "gallery";
     E.saveBg(b); openSettings();
   };
   body.querySelectorAll("[data-galpick]").forEach((btn) => {
     btn.onclick = () => {
       const b = E.loadBg() || {}; b.gallery = b.gallery || {};
-      b.gallery.enabled = true; b.gallery.auto = false; b.gallery.index = Number(btn.dataset.galpick);
+      b.gallery.enabled = true; b.gallery.auto = false; b.gallery.index = Number(btn.dataset.galpick); b.mode = "gallery";
       E.saveBg(b); openSettings();
     };
   });
-  const galOff = body.querySelector("#galOff");
-  if (galOff) galOff.onclick = () => { const b = E.loadBg() || {}; if (b.gallery) b.gallery.enabled = false; E.saveBg(b); openSettings(); };
+  const spToggle = body.querySelector("#spToggle");
+  if (spToggle) spToggle.onclick = () => { const s = sponsorsState(); s.enabled = !s.enabled; E.saveSponsors(s); openSettings(); };
+  const spSpeed = body.querySelector("#spSpeed");
+  if (spSpeed) spSpeed.onchange = () => {
+    const s = sponsorsState(); s.speed = Math.min(600, Math.max(20, Number(spSpeed.value) || 120));
+    E.saveSponsors(s);
+  };
+  const spFiles = body.querySelector("#spFiles");
+  if (spFiles) spFiles.onchange = (e) => handleSponsorLogos(e.target.files);
+  const spClear = body.querySelector("#spClear");
+  if (spClear) spClear.onclick = () => { if (confirm("¿Quitar todos los sponsors?")) { const s = sponsorsState(); s.logos = []; E.saveSponsors(s); openSettings(); } };
+  body.querySelectorAll("[data-spdel]").forEach((b) => {
+    b.onclick = () => { const s = sponsorsState(); s.logos.splice(Number(b.dataset.spdel), 1); E.saveSponsors(s); openSettings(); };
+  });
   body.querySelector("#btnMidi").onclick = enableMidi;
   body.querySelector("#btnWs").onclick = () => connectWs(body.querySelector("#wsUrl").value.trim());
   body.querySelectorAll("[data-learn]").forEach((b) => {
@@ -533,7 +687,12 @@ function selRow(key, label, val, opts) {
 
 function openHistory() {
   const body = $("historyBody");
-  let hist = []; try { hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch {}
+  const hist = loadHistory();
+  // Migra entradas antiguas (sin id) para poder borrarlas.
+  let changed = false;
+  hist.forEach((h, i) => { if (!h.id) { h.id = "legacy" + i + "_" + (h.date || 0); changed = true; } });
+  if (changed) saveHistory(hist);
+
   if (!hist.length) { body.innerHTML = `<p class="empty">No hay partidos guardados.</p>`; }
   else body.innerHTML = hist.map((h) => {
     const d = new Date(h.date);
@@ -543,8 +702,15 @@ function openHistory() {
         <span class="h-sport">${h.icon} ${h.sport}</span>
         <span class="h-teams">${E.esc(h.a)}${wa} vs ${E.esc(h.b)}${wb}</span>
         <span class="h-date">${ds}</span></div>
-      <span class="h-score">${h.scoreA} - ${h.scoreB}</span></div>`;
+      <span class="h-score">${h.scoreA} - ${h.scoreB}</span>
+      <span class="h-actions">
+        ${h.match ? `<button class="btn small" data-load="${h.id}">↩️ Recargar</button>` : ""}
+        <button class="btn small ghost" data-del="${h.id}" title="Borrar">🗑️</button>
+      </span></div>`;
   }).join("");
+
+  body.querySelectorAll("[data-load]").forEach((b) => (b.onclick = () => loadSavedMatch(b.dataset.load)));
+  body.querySelectorAll("[data-del]").forEach((b) => (b.onclick = () => deleteSavedMatch(b.dataset.del)));
   $("historyModal").hidden = false;
 }
 
@@ -591,5 +757,6 @@ function init() {
   if (localStorage.getItem("mm_midi_on")) enableMidi();
   const wsUrl = localStorage.getItem("mm_ws");
   if (wsUrl) connectWs(wsUrl);
+  startNdiSync(); // empuja el estado a la app NDI si está abierta (no-op si no)
 }
 init();

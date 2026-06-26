@@ -1,0 +1,54 @@
+name: Build app (Mac · Windows · Linux)
+
+# Compila el ejecutable de cada SO. La salida NDI es un módulo nativo, así que
+# cada plataforma DEBE compilarse en su propio runner (no se puede cross-compilar).
+on:
+  workflow_dispatch: {}        # lanzar a mano desde la pestaña Actions
+  push:
+    tags: ["v*"]               # o al crear un tag de versión (v1.0.0, ...)
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact: marcador-mac
+          - os: windows-latest
+            artifact: marcador-windows
+          - os: ubuntu-latest
+            artifact: marcador-linux
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: ndi-app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Instala dependencias y compila el módulo NDI (descarga el SDK de NDI).
+      - name: Install deps
+        run: npm install
+
+      # electron-builder detecta el SO del runner y genera su instalador.
+      - name: Build installer
+        run: npm run dist
+        env:
+          # evita intentos de firma/notarización en CI (builds sin firmar)
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ndi-app/dist/*.dmg
+            ndi-app/dist/*.zip
+            ndi-app/dist/*.exe
+            ndi-app/dist/*.AppImage
+          if-no-files-found: ignore

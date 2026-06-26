@@ -42,6 +42,8 @@ body.output.solid .waiting { display: flex; }
 }
 /* La salida a pantalla completa ocupa todo y baja el gráfico */
 body.output #stage { position: fixed; inset: 0; padding-bottom: 6vh; }
+/* Si la banda de sponsors está activa, sube el gráfico para no solaparla */
+body.output:has(.sp-band.on) #stage { padding-bottom: calc(clamp(46px, 7vh, 84px) + 2.5vh); }
 
 /* ---------- Barra principal ---------- */
 .sb {
@@ -161,6 +163,51 @@ body.output #stage { position: fixed; inset: 0; padding-bottom: 6vh; }
 
 /* Reduce el ancho del nombre si hace falta */
 @media (max-width: 760px) { .sb-name { font-size: 1.15em; } }
+
+/* ============================================================
+   SPONSORS · banda de publicidad (marquesina / carrusel)
+   Fija al borde inferior. Solo visible cuando hay logos y está
+   activada. Pensada para output.html (lower-third).
+   ============================================================ */
+.sp-band {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  height: clamp(46px, 7vh, 84px);
+  display: none; align-items: center; overflow: hidden;
+  pointer-events: none;
+  background: var(--nb-black);
+  border-top: 4px solid var(--nb-red);
+  box-shadow: 0 -6px 0 rgba(0,0,0,.45);
+  z-index: 5;
+}
+.sp-band.on { display: flex; }
+body.output:not(.solid) .sp-band { background: rgba(0,0,0,.82); }
+
+.sp-track {
+  display: flex; align-items: center; flex: 0 0 auto;
+  will-change: transform;
+  animation-name: sp-scroll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes sp-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.sp-set {
+  flex: 0 0 auto;
+  display: flex; align-items: center;
+  gap: clamp(28px, 5vw, 90px);
+  padding-right: clamp(28px, 5vw, 90px); /* separa el último logo del primero del siguiente grupo */
+}
+.sp-item {
+  flex: 0 0 auto; height: 100%;
+  display: flex; align-items: center;
+}
+.sp-item img {
+  height: clamp(30px, 4.6vh, 58px); width: auto;
+  object-fit: contain; display: block;
+  filter: drop-shadow(2px 2px 0 rgba(0,0,0,.6));
+}
 
 /* ============================================================
    PANTALLA GRANDE · marcador estilo estadio (Resolume / monitor)

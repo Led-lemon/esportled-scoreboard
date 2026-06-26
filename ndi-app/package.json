@@ -1,0 +1,76 @@
+{
+  "name": "marcador-ndi",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multi-Marcador Broadcast: consola de Control + salida NDI con alfa (Electron). Un ejecutable que abre todo, para Resolume sin OBS.",
+  "author": "EsportLed / LedLemon",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
+  },
+  "dependencies": {
+    "@stagetimerio/grandiose": "^0.2.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "electron": "^42.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.esportled.marcador",
+    "productName": "Marcador",
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "config.json"
+    ],
+    "asarUnpack": [
+      "**/node_modules/@stagetimerio/grandiose/**"
+    ],
+    "extraResources": [
+      {
+        "from": "..",
+        "to": "web",
+        "filter": [
+          "**/*",
+          "!ndi-app",
+          "!ndi-app/**",
+          "!.git",
+          "!.git/**",
+          "!.github",
+          "!.github/**",
+          "!**/node_modules/**",
+          "!**/.DS_Store",
+          "!**/*.log"
+        ]
+      }
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.video"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "AudioVideo"
+    }
+  }
+}

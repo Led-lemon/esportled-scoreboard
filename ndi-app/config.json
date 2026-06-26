@@ -1,0 +1,9 @@
+{
+  "outputs": [
+    { "page": "display.html", "name": "Marcador · Pantalla", "width": 1920, "height": 1080, "fps": 60 },
+    { "page": "output.html",  "name": "Marcador · Barra",    "width": 1920, "height": 1080, "fps": 60 }
+  ],
+  "httpPort": 8099,
+  "wsPort": 9011,
+  "unpremultiply": true
+}

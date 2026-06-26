@@ -131,6 +131,56 @@ function bbBar(m, who, c) {
   return `<div class="bb-bar bb-bar-${who.toLowerCase()}" style="--tc:${esc(t.color)}">${chips}</div>`;
 }
 
+/* ============================================================
+   SPONSORS · banda de publicidad (carrusel / marquesina)
+   Logos que se desplazan en bucle continuo. Independiente del
+   estado del partido: sigue rotando aunque el marcador se oculte.
+   ============================================================ */
+export function drawSponsors(root, s) {
+  s = s || {};
+  const logos = Array.isArray(s.logos) ? s.logos : [];
+  if (!s.enabled || !logos.length) { root._spToken = (root._spToken || 0) + 1; root.className = "sp-band"; root.innerHTML = ""; return; }
+  // `speed` = píxeles por segundo (velocidad CONSTANTE, no depende del nº de logos).
+  const pxps = Math.min(600, Math.max(20, Number(s.speed) || 120));
+
+  // Token para descartar una carga vieja si llega otra más nueva entretanto.
+  const token = (root._spToken = (root._spToken || 0) + 1);
+  let shown = false;
+  const reveal = () => {
+    if (shown || root._spToken !== token) return;
+    shown = true;
+    // Las imágenes ya están en caché del navegador → se pintan al instante,
+    // sin huecos en blanco. La banda anterior se mantuvo visible mientras tanto.
+    const setHtml = `<div class="sp-set">` +
+      logos.map((src) => `<span class="sp-item"><img src="${src}" alt=""></span>`).join("") +
+      `</div>`;
+    root.className = "sp-band on";
+
+    // 1) Pintamos un grupo para medir su ancho real.
+    root.innerHTML = `<div class="sp-track">${setHtml}</div>`;
+    const track = root.querySelector(".sp-track");
+    const setW = track.scrollWidth || 1;
+    const vw = root.clientWidth || window.innerWidth || 1920;
+
+    // 2) Repetimos el grupo hasta que UNA MITAD de la cinta llene la pantalla.
+    //    Con translateX(-50%) la otra mitad cubre siempre el ancho visible →
+    //    nunca queda hueco al final del ciclo (el bug del "tercer ciclo").
+    const half = Math.min(40, Math.max(1, Math.ceil(vw / setW)));
+    track.innerHTML = setHtml.repeat(half * 2);
+
+    // 3) Velocidad constante: duración = ancho de una mitad / píxeles por segundo.
+    const halfW = track.scrollWidth / 2;
+    track.style.animationDuration = Math.max(2, halfW / pxps) + "s";
+  };
+
+  // Precarga real con Image(): para un data URL el `load` se dispara aunque el
+  // elemento no esté en el DOM, así que cuando insertamos ya está decodificado.
+  let pending = logos.length;
+  const done = () => { if (--pending <= 0) reveal(); };
+  logos.forEach((src) => { const im = new Image(); im.onload = done; im.onerror = done; im.src = src; });
+  setTimeout(reveal, 1500); // red de seguridad por si alguna no carga
+}
+
 /* Actualiza solo el reloj (para el tick sin redibujar logos). */
 export function tickClock(root, m) {
   const c = resolveCfg(m.sport);

@@ -34,6 +34,12 @@ export const SPORTS = {
     bestOf: 3, golden: true,
     feat: { serving: true },
   },
+  rugby: {
+    name: "Rugby", icon: "🏉",
+    clockMode: "up", defMin: 40, scoring: "rugby",
+    periods: ["1ER TIEMPO", "2DO TIEMPO", "PRÓRROGA 1", "PRÓRROGA 2"],
+    feat: { cards: true, added: true },
+  },
 };
 
 export const POINTS = ["0", "15", "30", "40"];
@@ -146,6 +152,7 @@ export function primaryScore(m, who) {
   if (m.finished) return;
   if (c.scoring === "count") addCount(m, who, 1);
   else if (c.scoring === "basket") addCount(m, who, 2);
+  else if (c.scoring === "rugby") addCount(m, who, 5); // ensayo (acción principal)
   else if (c.scoring === "set") volleyPoint(m, who, 1);
   else if (c.scoring === "tennis") tennisPoint(m, who);
 }
@@ -228,9 +235,19 @@ export function scoreLabel(m, who) {
 
 /* ---------- Sincronización Control ↔ Salida ---------- */
 export const SYNC = ("BroadcastChannel" in self) ? new BroadcastChannel("mm_sync") : null;
+
+/* Sync remoto opcional: para consumidores en OTRO navegador (p. ej. la app NDI
+   de Electron), que no comparten localStorage/BroadcastChannel con el Control.
+   El Control registra un emisor con setRemoteSync(); aquí solo se invoca. No-op
+   si nadie escucha, así que no afecta al funcionamiento normal. */
+let _remoteSync = null;
+export function setRemoteSync(fn) { _remoteSync = fn; }
+function _emitRemote(type, data) { try { if (_remoteSync) _remoteSync({ type, data }); } catch {} }
+
 export function publish(m) {
   try { localStorage.setItem("mm_match", JSON.stringify(m)); } catch {}
   if (SYNC) SYNC.postMessage({ type: "state" });
+  _emitRemote("state", m);
 }
 export function loadMatch() {
   try {
@@ -238,6 +255,34 @@ export function loadMatch() {
     if (raw) return JSON.parse(raw);
   } catch {}
   return null;
+}
+
+/* Receptor remoto para las SALIDAS (app de escritorio).
+   Entre ventanas separadas de Electron, localStorage/BroadcastChannel no
+   propagan de forma fiable. Si hay un relay local (la app NDI/escritorio en
+   ws://127.0.0.1:9011), la salida recibe el estado por ahí: lo guarda en su
+   propio localStorage y dispara el handler para redibujar. Silencioso y con
+   reintento si no hay relay (flujo web normal: sigue valiendo el canal local). */
+export function connectRemoteReceiver(handlers = {}) {
+  if (typeof WebSocket === "undefined") return;
+  const KEY = { state: "mm_match", bg: "mm_bg", sponsors: "mm_sponsors" };
+  let ws = null;
+  const connect = () => {
+    try {
+      ws = new WebSocket("ws://127.0.0.1:9011");
+      ws.onmessage = (ev) => {
+        try {
+          const { type, data } = JSON.parse(ev.data);
+          if (!KEY[type]) return;
+          try { localStorage.setItem(KEY[type], JSON.stringify(data)); } catch {}
+          if (typeof handlers[type] === "function") handlers[type]();
+        } catch {}
+      };
+      ws.onclose = () => { ws = null; setTimeout(connect, 5000); };
+      ws.onerror = () => { try { ws.close(); } catch {} };
+    } catch { setTimeout(connect, 5000); }
+  };
+  connect();
 }
 
 /* ---------- Fondo personalizado de la pantalla grande ----------
@@ -248,6 +293,19 @@ export function loadBg() {
 export function saveBg(bg) {
   try { localStorage.setItem("mm_bg", JSON.stringify(bg || {})); } catch {}
   if (SYNC) SYNC.postMessage({ type: "bg" });
+  _emitRemote("bg", bg || {});
+}
+
+/* ---------- Sponsors · carrusel publicitario (global, no por partido) ----------
+   Modelo: { enabled, speed, logos: [dataURL, ...] }. `speed` = segundos por vuelta
+   completa de la marquesina. Se emite por el mismo canal con {type:"sponsors"}. */
+export function loadSponsors() {
+  try { return JSON.parse(localStorage.getItem("mm_sponsors") || "null"); } catch { return null; }
+}
+export function saveSponsors(s) {
+  try { localStorage.setItem("mm_sponsors", JSON.stringify(s || {})); } catch {}
+  if (SYNC) SYNC.postMessage({ type: "sponsors" });
+  _emitRemote("sponsors", s || {});
 }
 
 /* ---------- Utilidades ---------- */

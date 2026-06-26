@@ -8,7 +8,7 @@ scoreboard that drives them: a **free**, lightweight web app (JavaScript + CSS, 
 dependencies) with the brand's own look, ready for live production.
 
 It is **completely free** to use and supports
-**Football ⚽ · Basketball 🏀 · Volleyball 🏐 · Tennis 🎾 · Padel 🏓**
+**Football ⚽ · Basketball 🏀 · Volleyball 🏐 · Tennis 🎾 · Padel 🏓 · Rugby 🏉**
 with a **control + outputs** architecture (TV-production style):
 
 - **Control** (`index.html`) — the operator's console.
@@ -16,12 +16,24 @@ with a **control + outputs** architecture (TV-production style):
   - `output.html` — lower-third bar.
   - `display.html` — full-screen, stadium-style scoreboard.
 
-Everything stays in sync with the Control in real time (same browser / tabs).
+It runs two ways: as a **web app** (serve the folder, use it in the browser) or as a **desktop app**
+that bundles everything and also emits the outputs as **NDI sources with alpha** for Resolume — no
+OBS, no terminal (see [`ndi-app/`](ndi-app/README.md)). Everything stays in sync with the Control in
+real time.
 
 > Note: the scoreboard interface (operator console and on-screen graphics) is in **Spanish**.
 > This documentation is in English; on-screen menu labels below are quoted as they appear in the app.
 
 ## How to run
+
+### Option A — Desktop app (recommended)
+
+Install **Marcador** (one installer per OS: `.dmg` for macOS, `.exe` for Windows, `.AppImage` for
+Linux) and open it. It launches the Control console and emits the outputs as **NDI sources** in the
+background — no terminal, no extra server. Build and usage details in
+[`ndi-app/README.md`](ndi-app/README.md).
+
+### Option B — Web app (no install)
 
 Serve it over `localhost` (required for ES modules and MIDI):
 
@@ -31,8 +43,8 @@ python3 -m http.server 8080
 ```
 
 - Control: <http://localhost:8080/index.html>
-- The Control **Preview** shows the **full-screen display** (main mode) and **🖥️ Abrir salida**
-  opens it in a window. The lower-third bar is opened from **⚙️ → Salidas**.
+- The Control **Preview** shows the **full-screen display** and **🖥️ Abrir salida** opens it in a
+  window. The lower-third bar is opened from **⚙️ → Salidas**.
 
 ## Control screen
 
@@ -42,7 +54,8 @@ python3 -m http.server 8080
 - **Clock** with periods/quarters and, in football, **added time** (+1', +2'…).
 - Large per-sport score controls (goals, +1/+2/+3, fouls, cards, serve, possession…).
 - **Show / hide the graphic** on the output with an animation (key `V` or external control).
-- Undo, swap sides, save, reset, history.
+- Undo, swap sides, **save & reload full matches** (teams, colors, logos and score persist across
+  restarts — reload any from **🗂️ History**), reset.
 - Each sport remembers its own match.
 
 ## Outputs for Resolume / OBS (one server, two inputs, one output)
@@ -57,11 +70,13 @@ composites them over the match video and sends a single output to a screen/proje
 | Full-screen display | `display.html` | Stadium-style scoreboard: names, color panels, logos, clock and cards. |
 
 - To view them standalone on a monitor with a background, add `?bg=solid` (e.g. `display.html?bg=solid`).
-- **Custom background** for the full-screen display: under **⚙️ → Fondo personalizado** you can pick a
-  color, upload an image, or use the **gallery from the `fondos/` folder** (press *Buscar en /fondos*):
-  pick a photo by thumbnail or enable **Auto** to cycle through them every N seconds. Open the display
-  with `display.html?bg=custom`. Priority: gallery › image › color.
+- **Custom background** for the full-screen display: under **⚙️ → 🎨 Fondo** you choose **one** source
+  with a selector — **Color**, **Image** (upload), or **Gallery** (photos from the `fondos/` folder;
+  press *Buscar en /fondos*, then pick a thumbnail or enable **Auto** to cycle every N seconds). A
+  **Mostrar fondo** on/off switch turns it on; otherwise the display stays **transparent** for Resolume.
 - From the Control: **⚙️ → Salidas (Resolume / OBS)** has buttons to open each one.
+- **NDI (desktop app):** `display.html` and `output.html` are also emitted as NDI sources
+  (`Marcador · Pantalla`, `Marcador · Barra`) with transparency — add them as NDI layers in Resolume.
 
 ## Per-sport rules
 
@@ -70,6 +85,7 @@ composites them over the match video and sends a single output to a screen/proje
 - **Volleyball**: points per set, sets, automatic serve (side-out), best of 3/5.
 - **Tennis**: 0/15/30/40/AD, deuce, games, sets, tie-break, best of 1/3/5.
 - **Padel**: like tennis + **golden point**.
+- **Rugby**: try +5, conversion +2, penalty/drop +3, 🟨🟥, 2 halves + extra time, count-up clock and **added time**.
 
 Configurable under **⚙️ Reglas y control externo**.
 
@@ -82,6 +98,7 @@ The Control shortcuts are the direct path for Stream Deck (action **System → H
 | Home +point | `Q` | Away +point | `P` |
 | Home −point | `A` | Away −point | `L` |
 | Home +1/+2/+3 | `1` `2` `3` | Away +1/+2/+3 | `8` `9` `0` |
+| Rugby Home +2 / +3 | `F` / `D` | Rugby Away +2 / +3 | `J` / `K` |
 | Home foul | `W` | Away foul | `O` |
 | Home 🟨 / 🟥 | `E` / `R` | Away 🟨 / 🟥 | `I` / `U` |
 | Serve home / away | `[` / `]` | Clock play/pause | `Space` |
@@ -103,9 +120,9 @@ It gets bound (Chrome/Edge).
 
 ## Command IDs (WebSocket / MIDI)
 
-`a_plus a_minus b_plus b_minus a1 a2 a3 b1 b2 b3 a_foul b_foul a_yellow a_red b_yellow b_red`
-`serve_a serve_b clock_toggle clock_reset period_next period_prev added_plus added_minus`
-`onair undo swap save reset`
+`a_plus a_minus b_plus b_minus a1 a2 a3 b1 b2 b3 a_conv a_pen b_conv b_pen`
+`a_foul b_foul a_yellow a_red b_yellow b_red serve_a serve_b clock_toggle clock_reset`
+`period_next period_prev added_plus added_minus onair undo swap save reset`
 
 ## Files
 
@@ -118,6 +135,7 @@ It gets bound (Chrome/Edge).
 | `scoreboard.js` · `scoreboard.css` | Broadcast graphics: bar + full-screen displays (shared) |
 | `engine.js` | Sports logic, clock and synchronization |
 | `bridge.js` | Optional WebSocket bridge for Stream Deck (Node) |
+| `ndi-app/` | Desktop app (Electron): bundles the Control + serves the web + emits **NDI** outputs. Builds per-OS installers. |
 
 ---
 

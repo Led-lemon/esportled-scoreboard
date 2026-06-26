@@ -6,3 +6,14 @@
 .vscode/
 .idea/
 *.swp
+
+# App de escritorio (Electron) — NO subir a GitHub
+ndi-app/node_modules/
+ndi-app/dist/
+
+# Instaladores / ejecutables por SO (regenerables con el CI)
+*.dmg
+*.exe
+*.AppImage
+*.snap
+*.deb
