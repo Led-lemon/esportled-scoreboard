@@ -286,7 +286,7 @@ function handleBgImage(file) {
       ctx.drawImage(img, 0, 0, cv.width, cv.height);
       const b = E.loadBg() || {};
       b.image = cv.toDataURL("image/jpeg", 0.82);
-      b.mode = "image";
+      b.mode = "image"; b.enabled = true; // elegir un fondo lo activa (si no, quedaba transparente)
       E.saveBg(b); toast("🎨 Fondo cargado"); openSettings();
     };
     img.src = reader.result;
@@ -351,13 +351,13 @@ async function scanBgFolder() {
   if (!files.length) { toast("Sin fotos en /fondos"); return; }
   const b = E.loadBg() || {};
   b.gallery = Object.assign({ enabled: true, auto: false, intervalSec: 8, index: 0 }, b.gallery, { dir: BG_DIR, files });
-  b.gallery.enabled = true; b.mode = "gallery";
+  b.gallery.enabled = true; b.mode = "gallery"; b.enabled = true;
   E.saveBg(b); toast(`📁 ${files.length} foto(s)`); openSettings();
 }
 // Elige la fuente de fondo activa (color / imagen / galería). El display respeta bg.mode.
 function setBgMode(mode) {
   const b = E.loadBg() || {};
-  b.mode = mode;
+  b.mode = mode; b.enabled = true; // elegir una fuente de fondo lo activa
   if (b.gallery) b.gallery.enabled = (mode === "gallery");
   E.saveBg(b); openSettings();
 }
@@ -419,7 +419,20 @@ function renderTeams() {
     inp.onchange = () => apply((m) => { m[inp.dataset.team][inp.dataset.k] = inp.value.trim() || (inp.dataset.k === "name" ? "EQUIPO" : "EQ"); }, false);
   });
   wrap.querySelectorAll(".tc-color").forEach((inp) => {
-    inp.oninput = () => apply((m) => { const t = m[inp.dataset.team]; t.color = inp.value; t.colorHex = inp.value; }, false);
+    // En vivo: mutar + publicar a las salidas SIN render(). Un render() recrearía
+    // este <input> en cada movimiento y cerraría el selector de color del sistema.
+    // El preview local (color de tarjeta y logo-placeholder) se actualiza a mano.
+    inp.oninput = () => {
+      const t = match[inp.dataset.team];
+      t.color = inp.value; t.colorHex = inp.value;
+      E.publish(match);
+      const card = inp.closest(".team-card");
+      if (card) {
+        card.style.setProperty("--tc", inp.value);
+        const empty = card.querySelector(".logo-prev.empty");
+        if (empty) empty.style.background = inp.value;
+      }
+    };
   });
   wrap.querySelectorAll("[data-trans]").forEach((cb) => {
     cb.onchange = () => apply((m) => {
@@ -555,8 +568,14 @@ function openSettings() {
     <div class="seg">${seg("color", "🎨 Color")}${seg("image", "🖼️ Imagen")}${seg("gallery", "🗂️ Galería")}</div>`;
 
   if (bgMode === "color") {
+    const curHex = (bg.color && /^#[0-9a-fA-F]{6}$/.test(bg.color)) ? bg.color.toLowerCase() : "#0a0f1c";
+    const swatches = ["#000000", "#0a0f1c", "#1e1e1e", "#0047ab", "#00b140", "#0b3d2e", "#7a0026", "#ffffff"];
     html += `<div class="setting-row"><label>Color de fondo</label>
-      <input type="color" id="bgColor" value="${E.esc(bg.color || "#0a0f1c")}"></div>`;
+      <span class="switch">
+        <input type="color" id="bgColor" value="${E.esc(curHex)}" title="Selector del sistema">
+        <input type="text" id="bgColorHex" value="${E.esc(curHex)}" maxlength="7" spellcheck="false" placeholder="#0a0f1c" style="width:88px;text-transform:lowercase"></span></div>
+    <div class="bg-swatches">` + swatches.map((c) =>
+      `<button class="bg-sw${c === curHex ? " sel" : ""}" data-swatch="${c}" title="${c}" style="background:${c}"></button>`).join("") + `</div>`;
   } else if (bgMode === "image") {
     html += `<div class="setting-row"><label>Imagen de fondo<span class="hint">${bg.image ? "Imagen cargada" : "Sube una imagen (se ajusta a pantalla)"}</span></label>
       <span class="switch"><label class="btn small file-btn">${bg.image ? "Cambiar" : "Subir imagen"}<input type="file" accept="image/*" id="bgImage" hidden></label>
@@ -630,7 +649,24 @@ function openSettings() {
   if (bgEnabled) bgEnabled.onclick = () => { const b = E.loadBg() || {}; b.enabled = !b.enabled; E.saveBg(b); openSettings(); };
   body.querySelectorAll("[data-bgmode]").forEach((b) => (b.onclick = () => setBgMode(b.dataset.bgmode)));
   const bgColor = body.querySelector("#bgColor");
-  if (bgColor) bgColor.oninput = (e) => { const b = E.loadBg() || {}; b.color = e.target.value; b.mode = "color"; E.saveBg(b); };
+  const bgColorHex = body.querySelector("#bgColorHex");
+  // Cambiar color EN VIVO sin re-renderizar el panel (re-render cerraría el selector
+  // del sistema). Sincroniza selector nativo + campo hex + muestras a mano.
+  const setBgColor = (hex) => {
+    if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+    hex = hex.toLowerCase();
+    const b = E.loadBg() || {}; b.color = hex; b.mode = "color"; b.enabled = true; E.saveBg(b);
+    if (bgColor && bgColor.value.toLowerCase() !== hex) bgColor.value = hex;
+    if (bgColorHex && document.activeElement !== bgColorHex) bgColorHex.value = hex;
+    body.querySelectorAll("[data-swatch]").forEach((sw) => sw.classList.toggle("sel", sw.dataset.swatch === hex));
+  };
+  if (bgColor) bgColor.oninput = (e) => setBgColor(e.target.value);
+  if (bgColorHex) bgColorHex.oninput = (e) => {
+    let v = e.target.value.trim().toLowerCase();
+    if (v && v[0] !== "#") v = "#" + v;
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) setBgColor(v);
+  };
+  body.querySelectorAll("[data-swatch]").forEach((sw) => (sw.onclick = () => setBgColor(sw.dataset.swatch)));
   const bgImage = body.querySelector("#bgImage");
   if (bgImage) bgImage.onchange = (e) => handleBgImage(e.target.files[0]);
   const bgClear = body.querySelector("#bgImageClear");
@@ -642,13 +678,13 @@ function openSettings() {
     const b = E.loadBg() || {}; b.gallery = b.gallery || {};
     const sec = Number(body.querySelector("#galSec").value) || 8;
     b.gallery.intervalSec = Math.min(600, Math.max(2, sec));
-    b.gallery.enabled = true; b.gallery.auto = !b.gallery.auto; b.mode = "gallery";
+    b.gallery.enabled = true; b.gallery.auto = !b.gallery.auto; b.mode = "gallery"; b.enabled = true;
     E.saveBg(b); openSettings();
   };
   body.querySelectorAll("[data-galpick]").forEach((btn) => {
     btn.onclick = () => {
       const b = E.loadBg() || {}; b.gallery = b.gallery || {};
-      b.gallery.enabled = true; b.gallery.auto = false; b.gallery.index = Number(btn.dataset.galpick); b.mode = "gallery";
+      b.gallery.enabled = true; b.gallery.auto = false; b.gallery.index = Number(btn.dataset.galpick); b.mode = "gallery"; b.enabled = true;
       E.saveBg(b); openSettings();
     };
   });

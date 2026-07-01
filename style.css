@@ -191,6 +191,10 @@ small { font-size: .6em; color: var(--muted); letter-spacing: 2px; font-weight: 
 .bg-thumb { width: 92px; height: 52px; border-radius: 0; border: 3px solid var(--line); background-size: cover; background-position: center; cursor: pointer; padding: 0; transition: .15s; }
 .bg-thumb:hover { transform: translate(-2px,-2px); box-shadow: 3px 3px 0 var(--accent); border-color: var(--accent); }
 .bg-thumb.sel { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent) inset; }
+.bg-swatches { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; padding: 4px 0 12px; }
+.bg-sw { width: 40px; height: 40px; border-radius: 0; border: 3px solid var(--line); cursor: pointer; padding: 0; transition: .12s; }
+.bg-sw:hover { transform: translate(-2px,-2px); box-shadow: 3px 3px 0 var(--accent); border-color: var(--accent); }
+.bg-sw.sel { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent) inset; }
 /* Miniatura de sponsor: logo (a menudo transparente) sobre fondo oscuro + botón quitar */
 .sp-thumb { position: relative; background-size: contain; background-repeat: no-repeat; background-color: #111; }
 .sp-thumb .sp-del {

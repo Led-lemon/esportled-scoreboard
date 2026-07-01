@@ -64,6 +64,15 @@ function startStatic(port) {
       if (p === "/") p = "/index.html";
       const file = path.normalize(path.join(ROOT, p));
       if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end("forbidden"); }
+      // Listado de directorio: el Control descubre las fotos de fondos/ parseando
+      // los <a href> de este listado (igual que el http.server de Python). Sin
+      // esto, la galería de fondos queda vacía en la app empaquetada.
+      if (fs.existsSync(file) && fs.statSync(file).isDirectory()) {
+        let entries; try { entries = fs.readdirSync(file); } catch { entries = []; }
+        const links = entries.map((n) => `<a href="${encodeURIComponent(n)}">${n}</a>`).join("\n");
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        return res.end(`<!doctype html><meta charset="utf-8"><pre>\n${links}\n</pre>`);
+      }
       fs.readFile(file, (err, data) => {
         if (err) { res.writeHead(404); return res.end("not found"); }
         res.writeHead(200, { "Content-Type": MIME[path.extname(file).toLowerCase()] || "application/octet-stream" });

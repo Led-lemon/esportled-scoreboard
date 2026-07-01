@@ -30,9 +30,14 @@ function applyBg() {
   if (bgParam === "solid") return; // modo sólido fijo (gradiente por CSS), no se toca
   stopGallery();
   const bg = loadBg() || {};
-  if (!bg.enabled) { setBg("transparent"); return; } // fondo OFF -> transparente (Resolume)
   const g = bg.gallery || {};
   const hasGallery = Array.isArray(g.files) && g.files.length;
+  // Interruptor maestro. `enabled===false` = apagado explícito (transparente para
+  // Resolume). Datos antiguos podían no tener `enabled`: si hay contenido, se trata
+  // como encendido (auto-reparación); sin contenido, transparente por defecto.
+  const hasContent = !!(bg.image || bg.color || hasGallery);
+  const on = bg.enabled === true || (bg.enabled == null && hasContent);
+  if (!on) { setBg("transparent"); return; }
   // Modo elegido en el Control. Compat con datos antiguos sin `mode`.
   const mode = bg.mode || (g.enabled && hasGallery ? "gallery" : bg.image ? "image" : "color");
 
