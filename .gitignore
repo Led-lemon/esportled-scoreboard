@@ -1,8 +1,39 @@
-# macOS
+# Sistema operativo
 .DS_Store
 **/.DS_Store
+Thumbs.db
 
 # Editores
 .vscode/
 .idea/
 *.swp
+
+# Dependencias
+node_modules/
+**/node_modules/
+
+# Builds y artefactos generados
+dist/
+build/
+out/
+release/
+coverage/
+
+# App de escritorio / instaladores generados
+ndi-app/dist/
+ndi-app/build/
+*.dmg
+*.exe
+*.msi
+*.pkg
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.blockmap
+*.asar
+
+# Entorno local
+.env
+.env.*
+.claude/

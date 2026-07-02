@@ -5,12 +5,15 @@
      ?bg=custom  → fondo personalizado del Control (imagen o color)
      (sin ?bg)   → transparente, para Resolume
    ============================================================ */
-import { SYNC, loadMatch, loadBg } from "./engine.js";
-import { drawBig, tickClock } from "./scoreboard.js";
+import { SYNC, loadMatch, loadBg, loadSponsors, connectRemoteReceiver } from "./engine.js";
+import { drawBig, drawSponsors, tickClock } from "./scoreboard.js";
 
 const stage = document.getElementById("stage");
+const sponsors = document.getElementById("sponsors");
 const waiting = document.getElementById("waiting");
 let match = null;
+
+function refreshSponsors() { drawSponsors(sponsors, loadSponsors()); }
 
 const params = new URLSearchParams(location.search);
 const bgParam = params.get("bg");
@@ -24,13 +27,21 @@ let galleryTimer = null;
 function stopGallery() { if (galleryTimer) { clearInterval(galleryTimer); galleryTimer = null; } }
 
 function applyBg() {
-  if (bgParam !== "custom") return;
+  if (bgParam === "solid") return; // modo sólido fijo (gradiente por CSS), no se toca
   stopGallery();
   const bg = loadBg() || {};
-  const g = bg.gallery;
+  const g = bg.gallery || {};
+  const hasGallery = Array.isArray(g.files) && g.files.length;
+  // Interruptor maestro. `enabled===false` = apagado explícito (transparente para
+  // Resolume). Datos antiguos podían no tener `enabled`: si hay contenido, se trata
+  // como encendido (auto-reparación); sin contenido, transparente por defecto.
+  const hasContent = !!(bg.image || bg.color || hasGallery);
+  const on = bg.enabled === true || (bg.enabled == null && hasContent);
+  if (!on) { setBg("transparent"); return; }
+  // Modo elegido en el Control. Compat con datos antiguos sin `mode`.
+  const mode = bg.mode || (g.enabled && hasGallery ? "gallery" : bg.image ? "image" : "color");
 
-  // 1) Galería de carpeta (prioridad): manual o cambio automático.
-  if (g && g.enabled && Array.isArray(g.files) && g.files.length) {
+  if (mode === "gallery" && hasGallery) {
     const dir = g.dir || "fondos/";
     const files = g.files;
     if (g.auto) {
@@ -47,9 +58,8 @@ function applyBg() {
     }
     return;
   }
-
-  // 2) Imagen subida · 3) color · si no, gradiente.
-  setBg(bg.image ? imgCss(bg.image) : (bg.color || SOLID_BG));
+  if (mode === "image" && bg.image) { setBg(imgCss(bg.image)); return; }
+  setBg(bg.color || SOLID_BG);
 }
 
 function refresh() {
@@ -63,14 +73,20 @@ function refresh() {
 if (SYNC) SYNC.onmessage = (e) => {
   if (e.data?.type === "state") refresh();
   else if (e.data?.type === "bg") applyBg();
+  else if (e.data?.type === "sponsors") refreshSponsors();
 };
 window.addEventListener("storage", (e) => {
   if (e.key === "mm_match") refresh();
   else if (e.key === "mm_bg") applyBg();
+  else if (e.key === "mm_sponsors") refreshSponsors();
 });
 
 // Tick del reloj sin redibujar (evita recargar logos).
 setInterval(() => { if (match) tickClock(stage, match); }, 200);
 
+// Recepción por relay (app de escritorio); en web normal no hace nada.
+connectRemoteReceiver({ state: refresh, bg: applyBg, sponsors: refreshSponsors });
+
 applyBg();
 refresh();
+refreshSponsors();
