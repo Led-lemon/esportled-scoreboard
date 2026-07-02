@@ -1,0 +1,60 @@
+name: Bug report
+description: Report a reproducible problem in EsportLed Scoreboard
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Clear reproduction steps make it much easier to fix.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Release version, commit hash, or "main".
+      placeholder: "main / v1.0.0 / commit hash"
+    validations:
+      required: true
+  - type: dropdown
+    id: runtime
+    attributes:
+      label: Runtime
+      options:
+        - Web browser
+        - Electron desktop app
+        - NDI output
+        - OBS browser source
+        - Resolume Web/NDI source
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "macOS 15, Chrome 126, OBS 32, Resolume 8..."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Open...\n2. Select...\n3. Click..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots or recordings
+      description: Drag screenshots, videos, or logs here if useful.

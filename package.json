@@ -1,0 +1,37 @@
+{
+  "name": "esportled-scoreboard",
+  "version": "1.0.0",
+  "description": "Open-source sports LED scoreboard and broadcast graphics for OBS, Resolume and NDI by EsportLed / LedLemon.",
+  "license": "Apache-2.0",
+  "homepage": "https://esportled.com/software-esportled/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Led-lemon/esportled-scoreboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Led-lemon/esportled-scoreboard/issues"
+  },
+  "keywords": [
+    "scoreboard",
+    "led-scoreboard",
+    "sports-scoreboard",
+    "broadcast-graphics",
+    "obs",
+    "resolume",
+    "ndi",
+    "stream-deck",
+    "midi",
+    "football-scoreboard",
+    "basketball-scoreboard",
+    "volleyball-scoreboard",
+    "tennis-scoreboard",
+    "padel-scoreboard",
+    "rugby-scoreboard",
+    "electron",
+    "javascript"
+  ],
+  "scripts": {
+    "serve": "python3 -m http.server 8080",
+    "check": "node --check engine.js && node --check scoreboard.js && node --check control.js && node --check output.js && node --check display.js && node --check bridge.js && node --check ndi-app/main.js"
+  }
+}
