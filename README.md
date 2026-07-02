@@ -183,6 +183,13 @@ No se suben a git:
 - instaladores `.dmg`, `.exe`, `.msi`, `.AppImage`, `.deb`, `.rpm`, `.pkg`,
 - bundles `.asar` y `.blockmap`.
 
+## Licencia
+
+Copyright 2026 RGB LED GROUP S.L.
+
+Este proyecto se distribuye bajo la Apache License, Version 2.0. Consulta
+[`LICENSE`](LICENSE) y [`NOTICE`](NOTICE).
+
 ---
 
 **EsportLed** · Marcadores y pantallas deportivas para eventos en directo · un proyecto de

@@ -4,6 +4,7 @@
   "private": true,
   "description": "Multi-Marcador Broadcast: consola de Control + salida NDI con alfa (Electron). Un ejecutable que abre todo, para Resolume sin OBS.",
   "author": "EsportLed / LedLemon",
+  "license": "Apache-2.0",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -40,6 +41,8 @@
           "*.js",
           "*.css",
           "README.md",
+          "LICENSE",
+          "NOTICE",
           "CLAUDE.md",
           "fondos/**",
           "logos/**",
