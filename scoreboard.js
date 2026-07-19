@@ -132,6 +132,35 @@ function bbBar(m, who, c) {
 }
 
 /* ============================================================
+   ULTRA LITE · marcador mínimo para resoluciones muy pequeñas
+   Solo las dos puntuaciones y, en medio, el tiempo (o el periodo/
+   set si el deporte no lleva reloj). Sin nombres, logos ni tarjetas.
+   Escala con `vmin`, así llena cualquier resolución. Se selecciona a
+   mano como salida aparte (lite.html), igual que barra y pantalla.
+   ============================================================ */
+export function drawLite(root, m) {
+  const c = resolveCfg(m.sport);
+  const hasClock = c.clockMode !== "off";
+  // El reloj lleva la clase `sb-clock` para que `tickClock` lo refresque solo.
+  const mid = hasClock
+    ? `<div class="sb-clock lite-clock ${clockEnded(m) ? "over" : ""} ${m.clock.running ? "run" : ""}">${clockText(m)}</div>`
+    : `<div class="lite-period">${esc(periodLabel(m))}</div>`;
+  // classList (no reasignar className): conserva `solid` y el tamaño de caja que fija lite.js.
+  root.classList.add("lite-wrap");
+  root.classList.toggle("lite-final", !!m.finished);
+  root.classList.toggle("lite-hidden", !m.onAir);
+  root.innerHTML = `
+    <div class="lite" data-sport="${m.sport}">
+      <div class="lite-cell"><div class="lite-score lite-a" style="--tc:${esc(m.A.color)}">${scoreLabel(m, "A")}</div></div>
+      <div class="lite-cell lite-mid">
+        ${mid}
+        <img class="lite-logo" src="logos/esportled-color.png" alt="EsportLed">
+      </div>
+      <div class="lite-cell"><div class="lite-score lite-b" style="--tc:${esc(m.B.color)}">${scoreLabel(m, "B")}</div></div>
+    </div>`;
+}
+
+/* ============================================================
    SPONSORS · banda de publicidad (carrusel / marquesina)
    Logos que se desplazan en bucle continuo. Independiente del
    estado del partido: sigue rotando aunque el marcador se oculte.

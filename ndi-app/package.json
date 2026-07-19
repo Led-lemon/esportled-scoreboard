@@ -1,6 +1,6 @@
 {
   "name": "marcador-ndi",
-  "version": "1.0.0",
+  "version": "1.5.2",
   "private": true,
   "description": "Multi-Marcador Broadcast: consola de Control + salida NDI con alfa (Electron). Un ejecutable que abre todo, para Resolume sin OBS.",
   "author": "EsportLed / LedLemon",
@@ -23,7 +23,7 @@
   },
   "build": {
     "appId": "com.ledlemon.marcador",
-    "productName": "Marcador",
+    "productName": "EsportLED Scoreboard",
     "npmRebuild": false,
     "files": [
       "main.js",
@@ -38,6 +38,7 @@
           "index.html",
           "display.html",
           "output.html",
+          "lite.html",
           "*.js",
           "*.css",
           "README.md",
@@ -46,6 +47,7 @@
           "CLAUDE.md",
           "fondos/**",
           "logos/**",
+          "fonts/**",
           "Fugaz_One,Racing_Sans_One,Ultra/**",
           "!**/.DS_Store",
           "!ndi-app/**",
@@ -58,6 +60,7 @@
     ],
     "mac": {
       "category": "public.app-category.video",
+      "artifactName": "EsportLED Scoreboard 1.5.2.${ext}",
       "target": [
         "dmg",
         "zip"

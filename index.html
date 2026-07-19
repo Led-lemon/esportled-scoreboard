@@ -12,22 +12,24 @@
   <!-- ===== Cabecera ===== -->
   <header class="topbar">
     <div class="brand">
-      <img class="brand-logo" src="logos/esportled.png" alt="EsportLed" />
-      <span class="brand-sub">SCOREBOARD</span>
+      <img class="brand-logo" src="logos/esportled-scoreboard.png" alt="EsportLed Scoreboard" />
     </div>
     <nav class="sport-tabs" id="sportTabs"></nav>
     <div class="topbar-actions">
       <button class="btn" id="btnOpenOutput">🖥️ Abrir salida</button>
+      <button class="btn" id="btnOpenLite" title="Marcador mínimo (LED 512×128), siempre con fondo">📟 Lite</button>
       <button class="icon-btn" id="btnSettings" title="Reglas y control">⚙️</button>
       <button class="icon-btn" id="btnHistory" title="Historial">🗂️</button>
     </div>
   </header>
 
   <main class="console">
-    <!-- ===== Preview en vivo ===== -->
-    <section class="panel preview-panel">
-      <div class="panel-title">PREVIEW <span class="muted" id="previewState"></span></div>
-      <div class="preview-stage"><iframe id="preview" class="preview-frame" src="display.html?bg=custom" title="Preview de la salida"></iframe></div>
+    <!-- ===== Preview en vivo (desplegable, cerrado por defecto) ===== -->
+    <section class="panel preview-panel" id="previewPanel">
+      <button class="panel-title preview-toggle" id="previewToggle" type="button" aria-expanded="false" aria-controls="previewStage">
+        <span class="preview-caret" aria-hidden="true">▸</span> PREVIEW <span class="muted" id="previewState"></span>
+      </button>
+      <div class="preview-stage" id="previewStage" hidden><iframe id="preview" class="preview-frame" src="display.html?bg=custom" title="Preview de la salida"></iframe></div>
     </section>
 
     <!-- ===== Configuración de equipos ===== -->

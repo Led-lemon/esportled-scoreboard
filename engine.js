@@ -8,6 +8,7 @@ export const SPORTS = {
     name: "Fútbol", icon: "⚽",
     clockMode: "up", defMin: 45, scoring: "count",
     periods: ["1ER TIEMPO", "2DO TIEMPO", "PRÓRROGA 1", "PRÓRROGA 2"],
+    periodMin: [45, 45, 15, 15],
     feat: { fouls: true, cards: true, added: true },
   },
   basquet: {
@@ -38,6 +39,7 @@ export const SPORTS = {
     name: "Rugby", icon: "🏉",
     clockMode: "up", defMin: 40, scoring: "rugby",
     periods: ["1ER TIEMPO", "2DO TIEMPO", "PRÓRROGA 1", "PRÓRROGA 2"],
+    periodMin: [40, 40, 10, 10],
     feat: { cards: true, added: true },
   },
 };
@@ -89,6 +91,18 @@ export function limitMs(m) {
   const c = resolveCfg(m.sport);
   return (c.defMin || 0) * 60000;
 }
+/* Tiempo nominal acumulado de las partes ANTERIORES a la actual (solo cuenta-arriba).
+   Así el reloj es continuo: la 2ª parte de fútbol arranca en 45:00, no en 00:00.
+   Usa la duración por periodo (`periodMin`) si está definida; si no, `defMin`. */
+export function periodOffsetMs(m) {
+  const c = resolveCfg(m.sport);
+  if (c.clockMode !== "up" || !c.periods) return 0;
+  let min = 0;
+  for (let i = 0; i < m.period; i++) {
+    min += (c.periodMin && c.periodMin[i] != null) ? c.periodMin[i] : (c.defMin || 0);
+  }
+  return min * 60000;
+}
 export function fmt(ms) {
   ms = Math.max(0, Math.round(ms));
   const tot = Math.floor(ms / 1000);
@@ -100,7 +114,7 @@ export function clockText(m) {
   const c = resolveCfg(m.sport);
   if (c.clockMode === "off") return "";
   if (c.clockMode === "down") return fmt(Math.max(0, limitMs(m) - elapsed(m)));
-  return fmt(elapsed(m));
+  return fmt(periodOffsetMs(m) + elapsed(m));
 }
 export function clockEnded(m) {
   const c = resolveCfg(m.sport);

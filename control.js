@@ -249,6 +249,25 @@ function summary(who) {
   return (cf.scoring === "set" || cf.scoring === "tennis") ? String(match[who].sets) : String(match[who].score);
 }
 function openOutput() { window.open("display.html?bg=custom", "mm_display", "width=1280,height=720"); }
+// Resolución de la lite (configurable en Ajustes). Global, en localStorage.
+function loadLiteRes() {
+  try { const r = JSON.parse(localStorage.getItem("mm_lite") || "null"); if (r && r.w && r.h) return r; } catch {}
+  return { w: 512, h: 128 };
+}
+function saveLiteRes(w, h) {
+  w = Math.max(64, Math.min(7680, Math.round(w) || 512));
+  h = Math.max(16, Math.min(4320, Math.round(h) || 128));
+  localStorage.setItem("mm_lite", JSON.stringify({ w, h }));
+  return { w, h };
+}
+// Versión lite a la resolución elegida, SIEMPRE con fondo sólido. `popup=yes` la
+// abre como VENTANA independiente (no pestaña, sin barra del navegador). Un clic
+// dentro entra/sale de pantalla completa; lee desde 0,0 a esa resolución.
+function openLite() {
+  const { w, h } = loadLiteRes();
+  const ww = Math.min(w, 1600), wh = Math.min(h + 40, 900);
+  window.open(`lite.html?w=${w}&h=${h}&bg=solid`, "mm_lite", `popup=yes,width=${ww},height=${wh},left=0,top=0`);
+}
 
 /* ---------- Logos ---------- */
 function handleLogo(who, file) {
@@ -532,6 +551,7 @@ function renderOnAir() {
    ============================================================ */
 function openSettings() {
   const cf = c(), body = $("settingsBody");
+  const liteRes = loadLiteRes();
   let html = `<h3 class="sec-title">📋 Reglas · ${cf.name}</h3>`;
   if (match.sport === "futbol") html += numRow("defMin", "Minutos por tiempo", cf.defMin, 1, 60);
   if (match.sport === "rugby") html += numRow("defMin", "Minutos por tiempo", cf.defMin, 1, 60);
@@ -553,7 +573,12 @@ function openSettings() {
     <div class="setting-row"><label>Barra inferior<span class="hint">Lower-third sobre el vídeo · output.html</span></label>
       <span class="switch"><button class="btn small" data-out="output.html">Abrir</button></span></div>
     <div class="setting-row"><label>Pantalla grande<span class="hint">Marcador estilo estadio · display.html</span></label>
-      <span class="switch"><button class="btn small" data-out="display.html">Abrir</button></span></div>`;
+      <span class="switch"><button class="btn small" data-out="display.html">Abrir</button></span></div>
+    <div class="setting-row"><label>Ultra lite<span class="hint">Solo marcadores + tiempo (LED) · siempre con fondo · lite.html</span></label>
+      <span class="switch">
+        <input type="number" id="liteW" value="${liteRes.w}" min="64" max="7680" step="1" style="width:60px" title="Ancho (px)"> ×
+        <input type="number" id="liteH" value="${liteRes.h}" min="16" max="4320" step="1" style="width:60px" title="Alto (px)">
+        <button class="btn small" id="btnLiteOpen">Abrir</button></span></div>`;
 
   // Fondo de la pantalla grande — UNA sola fuente, elegida por modo.
   const bg = E.loadBg() || {};
@@ -645,6 +670,13 @@ function openSettings() {
   body.querySelectorAll("[data-out]").forEach((b) => {
     b.onclick = () => window.open(b.dataset.out, "mm_" + b.dataset.out.replace(/\W+/g, "_"));
   });
+  // Resolución de la lite: guardar al cambiar los campos y abrir con ella.
+  const liteW = body.querySelector("#liteW"), liteH = body.querySelector("#liteH");
+  const persistLite = () => { const r = saveLiteRes(Number(liteW.value), Number(liteH.value)); liteW.value = r.w; liteH.value = r.h; };
+  if (liteW) liteW.onchange = persistLite;
+  if (liteH) liteH.onchange = persistLite;
+  const btnLiteOpen = body.querySelector("#btnLiteOpen");
+  if (btnLiteOpen) btnLiteOpen.onclick = () => { persistLite(); openLite(); };
   const bgEnabled = body.querySelector("#bgEnabled");
   if (bgEnabled) bgEnabled.onclick = () => { const b = E.loadBg() || {}; b.enabled = !b.enabled; E.saveBg(b); openSettings(); };
   body.querySelectorAll("[data-bgmode]").forEach((b) => (b.onclick = () => setBgMode(b.dataset.bgmode)));
@@ -765,6 +797,17 @@ function wire() {
   $("btnSave").onclick = saveMatch;
   $("btnReset").onclick = resetMatch;
   $("btnOpenOutput").onclick = openOutput;
+  $("btnOpenLite").onclick = openLite;
+
+  // Preview desplegable (cerrado por defecto): el iframe sigue cargado y
+  // sincronizado aunque esté oculto, así al abrir ya está al día.
+  const pvToggle = $("previewToggle"), pvStage = $("previewStage"), pvPanel = $("previewPanel");
+  if (pvToggle && pvStage) pvToggle.onclick = () => {
+    const open = pvStage.hidden;
+    pvStage.hidden = !open;
+    pvToggle.setAttribute("aria-expanded", String(open));
+    pvPanel.classList.toggle("open", open);
+  };
   $("btnSettings").onclick = openSettings;
   $("btnHistory").onclick = openHistory;
   $("btnClearHistory").onclick = () => { if (confirm("¿Borrar historial?")) { localStorage.setItem(HISTORY_KEY, "[]"); openHistory(); } };

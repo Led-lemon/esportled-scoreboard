@@ -19,7 +19,10 @@ const params = new URLSearchParams(location.search);
 const bgParam = params.get("bg");
 if (bgParam === "solid") document.body.classList.add("solid");
 
-const SOLID_BG = "radial-gradient(1200px 800px at 50% 30%, #16213a, #070b14)";
+// Fondo sólido por defecto = EL MISMO que la salida lite (?bg=solid). Se usa
+// como respaldo cuando se pide fondo (bg=custom / "Abrir salida") pero no hay
+// imagen/galería/color válidos, para no quedar en blanco.
+const SOLID_BG = "repeating-linear-gradient(45deg, transparent, transparent 12px, rgba(249,78,65,.05) 12px, rgba(249,78,65,.05) 24px), linear-gradient(135deg, #000 0%, #161616 100%)";
 const imgCss = (url) => `#0a0f1c url("${url}") center / cover no-repeat`;
 const setBg = (css) => { document.body.style.background = css; };
 
@@ -37,7 +40,9 @@ function applyBg() {
   // como encendido (auto-reparación); sin contenido, transparente por defecto.
   const hasContent = !!(bg.image || bg.color || hasGallery);
   const on = bg.enabled === true || (bg.enabled == null && hasContent);
-  if (!on) { setBg("transparent"); return; }
+  // `?bg=custom` (preview / "Abrir salida") pide fondo: si no hay uno configurado,
+  // cae al SÓLIDO en vez de transparente. Sin `?bg` (salidas OBS) → transparente.
+  if (!on) { setBg(bgParam === "custom" ? SOLID_BG : "transparent"); return; }
   // Modo elegido en el Control. Compat con datos antiguos sin `mode`.
   const mode = bg.mode || (g.enabled && hasGallery ? "gallery" : bg.image ? "image" : "color");
 
@@ -58,7 +63,10 @@ function applyBg() {
     }
     return;
   }
-  if (mode === "image" && bg.image) { setBg(imgCss(bg.image)); return; }
+  // Modo imagen/galería SIN contenido → sólido (no un color residual). Solo el
+  // modo color usa bg.color; si tampoco hay color, sólido.
+  if (mode === "image") { setBg(bg.image ? imgCss(bg.image) : SOLID_BG); return; }
+  if (mode === "gallery") { setBg(SOLID_BG); return; }
   setBg(bg.color || SOLID_BG);
 }
 

@@ -2,7 +2,7 @@
    CONTROL · estilos de la consola del operador
    Estética: NEOBRUTALISMO (EsportLed)
    ============================================================ */
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;700&display=swap');
+@import url('fonts/fonts.css');
 
 :root {
   --bg: #161616;
@@ -46,13 +46,8 @@ small { font-size: .6em; color: var(--muted); letter-spacing: 2px; font-weight: 
   padding: 12px 18px; background: #000;
   border-bottom: 4px solid var(--accent);
 }
-.brand { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; line-height: 1; }
-.brand-logo { height: 40px; width: auto; display: block; }
-.brand-sub {
-  font-family: var(--disp); font-size: 18px; font-weight: 400; letter-spacing: 8px;
-  color: var(--text); text-transform: uppercase; align-self: stretch;
-  text-align: right; padding-right: 2px;
-}
+.brand { display: flex; align-items: center; line-height: 1; }
+.brand-logo { height: 48px; width: auto; display: block; }
 
 /* ---------- Pestañas de deporte ---------- */
 .sport-tabs { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; justify-content: center; }
@@ -96,8 +91,16 @@ small { font-size: .6em; color: var(--muted); letter-spacing: 2px; font-weight: 
 .panel { background: rgba(255,255,255,.03); border: 3px solid var(--line); border-radius: 0; padding: 16px; }
 .panel-title { font-family: var(--disp); font-size: 18px; font-weight: 400; letter-spacing: 3px; color: var(--accent); margin-bottom: 12px; text-transform: uppercase; }
 
-/* ---------- Preview ---------- */
+/* ---------- Preview (desplegable) ---------- */
 .preview-panel { position: relative; }
+.preview-toggle {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: none; border: 0; cursor: pointer; text-align: left;
+  padding: 0; margin: 0;
+}
+.preview-panel.open .preview-toggle { margin-bottom: 12px; }
+.preview-caret { display: inline-block; transition: transform .15s ease; font-size: 14px; }
+.preview-panel.open .preview-caret { transform: rotate(90deg); }
 .preview-panel::after {
   content: ''; position: absolute; top: -3px; right: -3px; width: 0; height: 0;
   border-style: solid; border-width: 0 38px 38px 0;

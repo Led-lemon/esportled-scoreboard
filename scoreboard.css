@@ -2,7 +2,7 @@
    SCOREBOARD · estilos del gráfico broadcast
    Estética: NEOBRUTALISMO (EsportLed)
    ============================================================ */
-@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@400;500;700&display=swap");
+@import url("fonts/fonts.css");
 
 * { box-sizing: border-box; }
 
@@ -324,3 +324,78 @@ body.output #stage.big-wrap { padding-bottom: 0; }
 .bb-wrap.big-final .bb-clockbox { background: var(--nb-red); border-color: var(--nb-red); }
 .bb-wrap.big-final .bb-clock,
 .bb-wrap.big-final .bb-period { color: #000; }
+
+/* ============================================================
+   ULTRA LITE · dos puntuaciones + tiempo, para resoluciones muy pequeñas
+   La caja se ancla en 0,0 y su tamaño lo fija la URL (?w=512&h=128) o,
+   por defecto, llena la pantalla. El texto escala con UNIDADES DE
+   CONTENEDOR (cqh/cqw): relativo a la caja, no al viewport. Así, con el
+   navegador a pantalla completa, el gráfico ocupa exactamente el
+   rectángulo que lee el panel LED desde la esquina superior izquierda.
+   ============================================================ */
+body.output #stage.lite-wrap {
+  position: fixed; top: 0; left: 0; padding: 0;
+  width: 100vw; height: 100vh;   /* por defecto pantalla completa; lite.js lo fija a ?w×?h */
+  container-type: size;          /* habilita cqh/cqw relativos a esta caja */
+  overflow: hidden;
+}
+/* Fondo sólido opcional (?bg=solid): solo dentro de la caja, no toda la pantalla. */
+#stage.lite-wrap.solid {
+  background:
+    repeating-linear-gradient(45deg, transparent, transparent 12px, rgba(249,78,65,.05) 12px, rgba(249,78,65,.05) 24px),
+    linear-gradient(135deg, #000 0%, var(--nb-dark) 100%);
+}
+.lite-wrap {
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.lite {
+  display: flex; align-items: center; justify-content: center;
+  gap: 2cqw; width: 100%; height: 100%;
+  overflow: hidden; white-space: nowrap;
+  transition: opacity .25s ease;
+}
+/* Tres celdas iguales: número · logo · número. Cada número se centra en su celda,
+   así queda a medio camino entre el borde y el logo central. */
+.lite-cell {
+  flex: 1 1 0; min-width: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.lite-wrap.lite-hidden .lite { opacity: 0; }
+.lite-score {
+  font-family: "Bebas Neue", sans-serif; font-weight: 400; line-height: 1;
+  color: #fff; background: var(--tc);
+  font-variant-numeric: tabular-nums;
+  min-width: 1.2em; text-align: center; padding: .04em .16em;
+  border: .05em solid var(--nb-black); box-shadow: .08em .08em 0 rgba(0,0,0,.5);
+  font-size: min(78cqh, 20cqw);
+}
+/* Color transparente de equipo: sin caja, deja ver el fondo. */
+.lite-score[style*="transparent"] { background: transparent; border-color: transparent; box-shadow: none; }
+/* Centro en columna: tiempo arriba (elevado) y logo lo más grande posible debajo.
+   flex:1 → ocupa todo el hueco libre entre marcadores; el logo se ajusta a ese
+   ancho (max-width:100%) y a la altura que deja el reloj, sin desbordar nunca. */
+.lite-mid {
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2cqh;
+}
+/* Reloj y logo al MISMO tamaño VISIBLE: la fuente deja hueco propio, así que
+   el reloj va con caja algo mayor para que las cifras igualen la altura del logo. */
+.lite-mid .sb-clock, .lite-clock {
+  font-family: "Bebas Neue", sans-serif; font-weight: 400; line-height: 1;
+  color: #fff; font-variant-numeric: tabular-nums; letter-spacing: .04em;
+  font-size: min(52cqh, 14cqw);
+}
+.lite-clock.run { color: var(--nb-red); }
+.lite-clock.over,
+.lite-final .lite-clock { color: var(--nb-red-dark); }
+.lite-period {
+  font-family: "Bebas Neue", sans-serif; font-weight: 400; line-height: 1;
+  color: #cbd5e1; letter-spacing: .04em; text-align: center;
+  font-size: min(46cqh, 11cqw);
+}
+.lite-logo {
+  display: block; object-fit: contain;
+  max-width: 100%; width: auto; height: auto; max-height: 38cqh;
+}
