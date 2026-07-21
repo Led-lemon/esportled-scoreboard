@@ -30,6 +30,12 @@ const fs = require("fs");
 const { WebSocketServer } = require("ws");
 const grandiose = require("@stagetimerio/grandiose");
 
+// Con ventanas offscreen (captura NDI) + aceleración por GPU, arrastrar/mover
+// una ventana (p.ej. llevar el Control a la 2ª pantalla) congela toda la app.
+// Desactivar la aceleración por hardware pasa el OSR a software y elimina el
+// bloqueo. Debe llamarse ANTES de app.whenReady().
+app.disableHardwareAcceleration();
+
 /* ---------- Config ---------- */
 const DEFAULTS = {
   outputs: [
