@@ -134,7 +134,8 @@ function bbBar(m, who, c) {
 /* ============================================================
    ULTRA LITE · marcador mínimo para resoluciones muy pequeñas
    Solo las dos puntuaciones y, en medio, el tiempo (o el periodo/
-   set si el deporte no lleva reloj). Sin nombres, logos ni tarjetas.
+   set si el deporte no lleva reloj). Sin nombres ni logos de equipo;
+   las tarjetas, si el deporte las lleva, van pegadas a los bordes.
    Escala con `vmin`, así llena cualquier resolución. Se selecciona a
    mano como salida aparte (lite.html), igual que barra y pantalla.
    ============================================================ */
@@ -149,14 +150,32 @@ export function drawLite(root, m) {
   root.classList.add("lite-wrap");
   root.classList.toggle("lite-final", !!m.finished);
   root.classList.toggle("lite-hidden", !m.onAir);
+  // --n = nº de cifras del marcador. Lo usa .lite-score para no pasarse de ancho
+  // cuando hay muchas (baloncesto 108); con una o dos, manda la altura.
+  const la = String(scoreLabel(m, "A")), lb = String(scoreLabel(m, "B"));
+  const n = Math.max(1, la.length, lb.length);
+  // Columna de tarjetas pegada al borde de la ventana: amarillas arriba, rojas
+  // debajo, una por cada una. Solo se emite si hay alguna, así sin tarjetas las
+  // cifras conservan toda la altura y al aparecer la fila se recoloca sola.
+  const cards = (who) => {
+    const t = m[who];
+    const y = c.feat.cards ? t.yellow | 0 : 0;
+    const r = c.feat.cards ? t.red | 0 : 0;
+    if (!(y + r)) return "";
+    return `<div class="lite-cards lite-cards-${who.toLowerCase()}">` +
+      `<span class="lite-card yel"></span>`.repeat(y) +
+      `<span class="lite-card red"></span>`.repeat(r) + `</div>`;
+  };
   root.innerHTML = `
     <div class="lite" data-sport="${m.sport}">
-      <div class="lite-cell"><div class="lite-score lite-a" style="--tc:${esc(m.A.color)}">${scoreLabel(m, "A")}</div></div>
+      ${cards("A")}
+      <div class="lite-cell"><div class="lite-score lite-a" style="--tc:${esc(m.A.color)};--n:${n}">${la}</div></div>
       <div class="lite-cell lite-mid">
         ${mid}
         <img class="lite-logo" src="logos/esportled-color.png" alt="EsportLed">
       </div>
-      <div class="lite-cell"><div class="lite-score lite-b" style="--tc:${esc(m.B.color)}">${scoreLabel(m, "B")}</div></div>
+      <div class="lite-cell"><div class="lite-score lite-b" style="--tc:${esc(m.B.color)};--n:${n}">${lb}</div></div>
+      ${cards("B")}
     </div>`;
 }
 

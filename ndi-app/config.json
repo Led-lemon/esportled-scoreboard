@@ -1,8 +1,8 @@
 {
   "outputs": [
-    { "page": "display.html", "name": "Marcador · Pantalla", "width": 1920, "height": 1080, "fps": 60 },
-    { "page": "output.html",  "name": "Marcador · Barra",    "width": 1920, "height": 1080, "fps": 60 },
-    { "page": "lite.html",    "name": "Marcador · Lite",     "width": 512,  "height": 128,  "fps": 60 }
+    { "page": "display.html", "name": "Marcador · Pantalla", "width": 1920, "height": 1080, "fps": 30 },
+    { "page": "output.html",  "name": "Marcador · Barra",    "width": 1920, "height": 1080, "fps": 30 },
+    { "page": "lite.html",    "name": "Marcador · Lite",     "width": 512,  "height": 128,  "fps": 30 }
   ],
   "httpPort": 8099,
   "wsPort": 9011,

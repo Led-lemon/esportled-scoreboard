@@ -144,13 +144,14 @@ body.output:has(.sp-band.on) #stage { padding-bottom: calc(clamp(46px, 7vh, 84px
   font-family: "Bebas Neue", sans-serif; font-size: .64em; font-weight: 400; letter-spacing: 2px;
   color: var(--nb-red); text-transform: uppercase; white-space: nowrap; line-height: 1;
 }
+/* El reloj va SIEMPRE en blanco, corriendo, parado o finalizado: en las tres
+   salidas. Las clases .run/.over siguen puestas (tickClock las usa), pero ya no
+   cambian el color. Ojo: sin `color` heredaría el rojo de .sb-mid. */
 .sb-clock {
   font-family: "Bebas Neue", sans-serif; font-weight: 400;
   font-size: 1.5em; font-variant-numeric: tabular-nums; letter-spacing: 1px;
-  line-height: .9;
+  line-height: .9; color: #fff;
 }
-.sb-clock.run { color: var(--nb-red); }
-.sb-clock.over { color: var(--nb-red-dark); }
 .sb-added {
   font-family: "Bebas Neue", sans-serif; font-weight: 400; font-size: .8em;
   color: var(--nb-red); line-height: 1;
@@ -159,7 +160,6 @@ body.output:has(.sp-band.on) #stage { padding-bottom: calc(clamp(46px, 7vh, 84px
 /* ---------- Final ---------- */
 .sb-final .sb-mid { background: var(--nb-red); color: #000; }
 .sb-final .sb-period { color: #000; }
-.sb-final .sb-clock { color: #000; }
 
 /* Reduce el ancho del nombre si hace falta */
 @media (max-width: 760px) { .sb-name { font-size: 1.15em; } }
@@ -315,14 +315,12 @@ body.output #stage.big-wrap { padding-bottom: 0; }
   font-family: "Bebas Neue", sans-serif; font-weight: 400; color: #fff; line-height: 1;
   font-variant-numeric: tabular-nums; letter-spacing: 2px; font-size: clamp(38px, 6.5vw, 120px);
 }
-.bb-clock.run { color: var(--nb-red); }
-.bb-clock.over { color: var(--nb-red-dark); }
+/* Blanco siempre (ver .sb-clock). */
 .bb-added {
   font-family: "Bebas Neue", sans-serif; font-weight: 400; color: var(--nb-red); font-size: clamp(16px, 2vw, 32px);
 }
 .bb-wrap.big-final .bb-num { color: #fff; }
 .bb-wrap.big-final .bb-clockbox { background: var(--nb-red); border-color: var(--nb-red); }
-.bb-wrap.big-final .bb-clock,
 .bb-wrap.big-final .bb-period { color: #000; }
 
 /* ============================================================
@@ -361,15 +359,56 @@ body.output #stage.lite-wrap {
   flex: 1 1 0; min-width: 0;
   display: flex; align-items: center; justify-content: center;
 }
+/* Las celdas de marcador son su PROPIO contenedor: así el ancho de la cifra se
+   mide contra su celda, no contra la ventana, y se ajusta sola cuando las
+   tarjetas aparecen y estrechan la fila. El centro NO (su reloj y su logo van
+   en cqh/cqw de la ventana).
+   OJO con el `height`: `container-type: size` aísla el tamaño del contenido, y
+   como .lite centra en vez de estirar, sin altura explícita la celda colapsa a
+   0 y con ella todos los cqh de dentro. */
+.lite-cell:not(.lite-mid) { container-type: size; height: 100%; }
 .lite-wrap.lite-hidden .lite { opacity: 0; }
+/* Cifras a la ALTURA COMPLETA de la ventana menos 2 px arriba y 2 abajo
+   (128 → 124 px de tinta). Medido sobre Bebas Neue: un dígito ocupa .72em de
+   tinta y la línea base cae a .80em del borde superior de la caja de línea, o
+   sea que la tinta queda .05em por encima del centro → se compensa con el
+   translateY. La caja de color desborda arriba y abajo y la recorta el
+   `overflow:hidden` de .lite; es a propósito, manda el dígito.
+     alto  → (100cqh - 4px) / .72
+     ancho → la caja mide (n × .40 + .10)em (avance del dígito + los dos bordes);
+             .14 deja un pelo de aire. --n lo pone drawLite con las cifras que
+             haya, así un 8 llena la ventana y un 108 se reduce para caber.
+             Va en cqw de la CELDA, o sea que al salir tarjetas y estrecharse la
+             fila la cifra se reajusta sola. */
 .lite-score {
   font-family: "Bebas Neue", sans-serif; font-weight: 400; line-height: 1;
   color: #fff; background: var(--tc);
   font-variant-numeric: tabular-nums;
-  min-width: 1.2em; text-align: center; padding: .04em .16em;
+  text-align: center; padding: 0;
   border: .05em solid var(--nb-black); box-shadow: .08em .08em 0 rgba(0,0,0,.5);
-  font-size: min(78cqh, 20cqw);
+  font-size: min(calc((100cqh - 4px) / .72), calc(100cqw / (var(--n, 1) * .40 + .14)));
+  transform: translateY(.05em);
 }
+/* Tarjetas pegadas al borde de la ventana: amarillas arriba, rojas debajo, una
+   por cada una. La columna solo existe si hay alguna: sin tarjetas no roba
+   ancho y las cifras conservan su altura completa.
+   Cuadradas y SIEMPRE del mismo tamaño: cinco justas en la vertical, con los
+   mismos 2 px de aire arriba y abajo que las cifras (5 × 22,4 + 4 × 3 = 124 en
+   una ventana de 128). De la sexta en adelante ENVUELVE en otra columna en vez
+   de encogerlas. En el equipo B envuelve al revés, para que las amarillas
+   queden igual de pegadas al borde que en el A. */
+.lite-cards {
+  flex: 0 0 auto; height: 100cqh;
+  display: flex; flex-flow: column wrap;
+  align-items: center; align-content: center; justify-content: center; gap: 3px;
+}
+.lite-cards-b { flex-wrap: wrap-reverse; }
+.lite-card {
+  aspect-ratio: 1; border: 2px solid #000;
+  height: calc((100cqh - 4px - 12px) / 5);
+}
+.lite-card.yel { background: #facc15; }
+.lite-card.red { background: var(--nb-red); }
 /* Color transparente de equipo: sin caja, deja ver el fondo. */
 .lite-score[style*="transparent"] { background: transparent; border-color: transparent; box-shadow: none; }
 /* Centro en columna: tiempo arriba (elevado) y logo lo más grande posible debajo.
@@ -387,9 +426,7 @@ body.output #stage.lite-wrap {
   color: #fff; font-variant-numeric: tabular-nums; letter-spacing: .04em;
   font-size: min(52cqh, 14cqw);
 }
-.lite-clock.run { color: var(--nb-red); }
-.lite-clock.over,
-.lite-final .lite-clock { color: var(--nb-red-dark); }
+/* Blanco siempre (ver .sb-clock). */
 .lite-period {
   font-family: "Bebas Neue", sans-serif; font-weight: 400; line-height: 1;
   color: #cbd5e1; letter-spacing: .04em; text-align: center;

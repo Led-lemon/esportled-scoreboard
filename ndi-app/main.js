@@ -12,6 +12,17 @@
    (publish()/BroadcastChannel/localStorage). La transparencia viaja en NDI:
    en Resolume pones cada fuente en una capa por encima de tu fondo. Sin OBS.
    ============================================================ */
+
+// IMPORTANTE — antes de cualquier require que use el threadpool de libuv.
+// grandiose envía cada frame con napi_create_async_work, o sea EN EL THREADPOOL,
+// y con clockVideo:true la llamada nativa BLOQUEA hasta el instante del frame.
+// Con 3 salidas eso deja parados 3 de los 4 hilos por defecto, y el servidor
+// estático (fs.readFile) se queda con uno: abrir una ventana emergente pasa a
+// tardar una eternidad y la app parece colgada. Un hilo por salida + margen.
+if (!process.env.UV_THREADPOOL_SIZE) {
+  process.env.UV_THREADPOOL_SIZE = String(Math.min(32, Math.max(8, (require("os").cpus()?.length || 4) + 4)));
+}
+
 const { app, BrowserWindow, Menu, shell } = require("electron");
 const http = require("http");
 const path = require("path");
@@ -22,16 +33,30 @@ const grandiose = require("@stagetimerio/grandiose");
 /* ---------- Config ---------- */
 const DEFAULTS = {
   outputs: [
-    { page: "display.html", name: "Marcador · Pantalla", width: 1920, height: 1080, fps: 60 },
-    { page: "output.html", name: "Marcador · Barra", width: 1920, height: 1080, fps: 60 },
-    { page: "lite.html", name: "Marcador · Lite", width: 512, height: 128, fps: 60 },
+    // 30 fps: un marcador no se mueve por frame y a 1080p cada salida son ~250
+    // MB/s por NDI. A 60 el hilo principal se atasca en equipos modestos.
+    { page: "display.html", name: "Marcador · Pantalla", width: 1920, height: 1080, fps: 30 },
+    { page: "output.html", name: "Marcador · Barra", width: 1920, height: 1080, fps: 30 },
+    { page: "lite.html", name: "Marcador · Lite", width: 512, height: 128, fps: 30 },
   ],
   httpPort: 8099, wsPort: 9011, unpremultiply: true,
 };
+// Orden de búsqueda del config. El de __dirname viaja DENTRO del .asar, así que
+// en el .exe/.dmg no se puede tocar: por eso miramos antes junto al ejecutable y
+// en la carpeta de datos del usuario. Así se pueden bajar fps o quitar salidas
+// en un equipo flojo sin recompilar nada.
+function configPaths() {
+  const list = [];
+  try { list.push(path.join(app.getPath("userData"), "config.json")); } catch {}
+  try { if (app.isPackaged) list.push(path.join(path.dirname(app.getPath("exe")), "config.json")); } catch {}
+  list.push(path.join(__dirname, "config.json"));
+  return list;
+}
 function loadConfig() {
   let user = {};
-  // En empaquetado, config.json viaja junto al código de la app.
-  try { user = JSON.parse(fs.readFileSync(path.join(__dirname, "config.json"), "utf8")); } catch {}
+  for (const p of configPaths()) {
+    try { user = JSON.parse(fs.readFileSync(p, "utf8")); console.log(`[cfg] ${p}`); break; } catch {}
+  }
   const cfg = { ...DEFAULTS, ...user };
   if (!Array.isArray(cfg.outputs) || !cfg.outputs.length) {
     cfg.outputs = [{
@@ -113,6 +138,42 @@ function startRelay(port) {
 
 /* ---------- 2) Ventana principal: Consola de Control ---------- */
 let controlWin = null;
+
+/* Ventanas de salida ("Abrir salida" / "Abrir lite"): las creamos a mano para
+   que NO cuelguen del Control. Se reusan por nombre, como haría window.open. */
+const childWins = new Map(); // frameName -> BrowserWindow
+
+// "width=512,height=168,left=0,top=0,popup=yes" -> { width:512, ... }
+function parseFeatures(features) {
+  const out = {};
+  for (const part of String(features || "").split(",")) {
+    const [k, v] = part.split("=");
+    const n = parseInt(v, 10);
+    if (k && Number.isFinite(n)) out[k.trim()] = n;
+  }
+  return out;
+}
+
+function openChildWindow(url, frameName, features) {
+  const name = frameName || url;
+  const prev = childWins.get(name);
+  if (prev && !prev.isDestroyed()) { if (prev.isMinimized()) prev.restore(); prev.focus(); return prev; }
+
+  const f = parseFeatures(features);
+  const win = new BrowserWindow({
+    width: f.width || 1280, height: f.height || 720,
+    ...(Number.isFinite(f.left) ? { x: f.left } : {}),
+    ...(Number.isFinite(f.top) ? { y: f.top } : {}),
+    title: "Marcador · Salida",
+    backgroundColor: "#000000",
+    autoHideMenuBar: true,
+    webPreferences: { contextIsolation: true, nodeIntegration: false, backgroundThrottling: false },
+  });
+  win.loadURL(url);
+  win.on("closed", () => childWins.delete(name));
+  childWins.set(name, win);
+  return win;
+}
 function createControlWindow() {
   controlWin = new BrowserWindow({
     width: 1280, height: 820, minWidth: 980, minHeight: 620,
@@ -125,11 +186,18 @@ function createControlWindow() {
   // "Abrir salida" (display.html/output.html) debe abrirse DENTRO de la app, mismo
   // origen, para que se sincronice con el Control. Solo los enlaces realmente
   // externos van al navegador del sistema.
-  controlWin.webContents.setWindowOpenHandler(({ url }) => {
+  controlWin.webContents.setWindowOpenHandler(({ url, frameName, features }) => {
     try {
       const u = new URL(url);
       if (u.hostname === "127.0.0.1" && String(u.port) === String(CFG.httpPort)) {
-        return { action: "allow" }; // ventana Electron normal (misma sesión/origen)
+        // OJO: no devolvemos {action:"allow"}. Dejar que Electron abra la ventana
+        // por la vía de window.open la deja ENLAZADA al Control (tiene `opener`),
+        // y Chromium mete ambas en el MISMO proceso de render: repintar el 1080p
+        // de la salida congela la consola y viceversa. Aquí la creamos nosotros,
+        // sin `opener`, así cada salida corre en su propio proceso. La sincronía
+        // no se pierde: va por el relay WS (connectRemoteReceiver), no por opener.
+        openChildWindow(url, frameName, features);
+        return { action: "deny" };
       }
     } catch {}
     shell.openExternal(url);
@@ -156,7 +224,7 @@ function unpremultiply(buf) {
 }
 
 function createOutput(oc) {
-  const o = { cfg: oc, win: null, latest: null, sender: null, running: false, warned: false };
+  const o = { cfg: oc, win: null, next: null, latest: null, sender: null, running: false, warned: false };
   o.win = new BrowserWindow({
     width: oc.width, height: oc.height,
     show: false, frame: false, transparent: true, backgroundColor: "#00000000",
@@ -164,10 +232,12 @@ function createOutput(oc) {
   });
   o.win.webContents.setFrameRate(oc.fps);
   o.win.webContents.on("paint", (_e, _dirty, image) => {
+    // Si el bucle NDI todavía no ha consumido el frame anterior, descarta este
+    // ANTES de copiar (toBitmap son ~8 MB por frame a 1080p): en sobrecarga,
+    // copiar para acabar tirándolo solo empeora el atasco del hilo principal.
+    if (o.next) return;
     const size = image.getSize();
-    const data = image.toBitmap(); // BGRA, copia propia
-    if (CFG.unpremultiply) unpremultiply(data);
-    o.latest = { data, width: size.width, height: size.height };
+    o.next = { data: image.toBitmap(), width: size.width, height: size.height }; // BGRA, copia propia
   });
   // La página se sincroniza sola conectándose al hub (connectRemoteReceiver).
   o.win.loadURL(`http://127.0.0.1:${CFG.httpPort}/${oc.page}`);
@@ -177,7 +247,16 @@ function createOutput(oc) {
 
 async function ndiLoop(o) {
   while (o.running) {
-    if (!o.sender || !o.latest) { await sleep(20); continue; }
+    if (!o.sender) { await sleep(20); continue; }
+    if (o.next) {
+      // El unpremultiply (bucle JS sobre 2 M píxeles) solo sobre frames que SE
+      // ENVÍAN, no sobre cada pintado. Con el marcador quieto no cuesta nada.
+      const f = o.next;
+      o.next = null;
+      if (CFG.unpremultiply) unpremultiply(f.data);
+      o.latest = f;
+    }
+    if (!o.latest) { await sleep(20); continue; }
     const f = o.latest;
     try {
       await o.sender.video({
