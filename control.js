@@ -93,6 +93,9 @@ COMMAND_LIST.forEach(([id, , key]) => {
   KEYMAP[k] = id;
 });
 function handleKey(e) {
+  // Con Ctrl/Cmd/Alt no despachamos comandos: deja pasar el zoom del navegador/app
+  // (Ctrl +/−/0, Cmd +/−/0) y demás atajos del sistema. Shift sí vale (p.ej. "+").
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;
   const k = e.key === " " ? " " : e.key.toLowerCase();
   const cmd = KEYMAP[k];

@@ -1,6 +1,6 @@
 {
   "name": "marcador-ndi",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "private": true,
   "description": "Multi-Marcador Broadcast: consola de Control + salida NDI con alfa (Electron). Un ejecutable que abre todo, para Resolume sin OBS.",
   "author": "EsportLed / LedLemon",
